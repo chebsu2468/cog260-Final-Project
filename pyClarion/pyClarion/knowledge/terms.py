@@ -44,7 +44,7 @@ class Var[S: Sort](KSProtocol, Symbol):
         if self.validate(term):
             return term
         raise ValueError(f"Value {term} assigned to Var {self} does not "
-            "belong to the correct sort.")
+                         "belong to the correct sort.")
 
     def __contains__(self, key: str | Key) -> bool:
         try:
@@ -64,7 +64,7 @@ class Var[S: Sort](KSProtocol, Symbol):
 
     def _keyform_(self, *hs: int) -> KeyForm:
         return self.sort._keyform_(*hs)
-    
+
     def _iter_(self, *hs: int) -> Iterator[Key]:
         h, = hs
         if h <= 0:
@@ -72,8 +72,8 @@ class Var[S: Sort](KSProtocol, Symbol):
         if h == 1:
             for key in self.sort._members_:
                 if key in self:
-                    yield key 
-    
+                    yield key
+
     def validate(self, term: Term) -> bool:
         if ks_parent(term) != self.sort:
             return False
@@ -95,7 +95,7 @@ class Var[S: Sort](KSProtocol, Symbol):
 class MatchVar[C: "Compound"](Symbol):
     term: C
     variables: tuple[Var, ...]
- 
+
     def __init__(self, term: C, *variables: Var) -> None:
         self.term = term
         self.variables = variables
@@ -105,7 +105,7 @@ class Compound(Term):
     """
     Base class for compound terms.
 
-    A compound term represents a data element with some constituency structure 
+    A compound term represents a data element with some constituency structure
     (i.e., chunks and rules).
 
     Do not directly instantiate this class.
@@ -115,7 +115,6 @@ class Compound(Term):
     _instances_: WeakSet[Self]
     _template_: Self | None
     _counter_: count
-
 
     def __init__(self, template: Self | None = None) -> None:
         super().__init__()
@@ -128,13 +127,13 @@ class Compound(Term):
     def __rxor__(self: Self, other: str) -> Self:
         if not other.isidentifier():
             ValueError("Compound term identifier must be a valid "
-                "python identifier")
+                       "python identifier")
         self._name_ = other
         return self
 
     def __call__(self, *variables: Var) -> MatchVar[Self]:
         return MatchVar(self, *variables)
-    
+
     def _match_(self, vals: dict[Var, Term]) -> set[Self]:
         candidates = set(self._instances_)
         for var, val in vals.items():
@@ -144,7 +143,8 @@ class Compound(Term):
 
     @staticmethod
     def _collect_vars_(
-        dyads: Iterable[tuple[Term | Indexical | Var | MatchVar, Term | Indexical | Var | MatchVar]]
+            dyads: Iterable[
+                tuple[Term | Indexical | Var | MatchVar, Term | Indexical | Var | MatchVar]]
     ) -> set[Var]:
         _vars_ = set()
         for dyad in dyads:
@@ -176,25 +176,27 @@ class ChunkData(TypedDict):
 class Chunk(Compound):
     """
     A chunk term.
-    
-    Symbolically represents a Clarion chunk, together with its dimension-value 
+
+    Symbolically represents a Clarion chunk, together with its dimension-value
     pairs.
     """
-    _dyads_: dict[tuple[Term | Indexical | Var | MatchVar, Term | Indexical | Var | MatchVar], float]
+    _dyads_: dict[
+        tuple[Term | Indexical | Var | MatchVar, Term | Indexical | Var | MatchVar], float]
     _rule_: "Rule | None"
 
     @overload
     def __init__(
-        self, 
-        dyads: dict[tuple[Term | Indexical | Var  | MatchVar, Term | Indexical | Var | MatchVar], float]
+            self,
+            dyads: dict[
+                tuple[Term | Indexical | Var | MatchVar, Term | Indexical | Var | MatchVar], float]
     ) -> None:
         ...
-    
+
     @overload
     def __init__(
-        self: Self, 
-        dyads: dict[tuple[Term | Indexical, Term | Indexical], float], 
-        template: Self
+            self: Self,
+            dyads: dict[tuple[Term | Indexical, Term | Indexical], float],
+            template: Self
     ) -> None:
         ...
 
@@ -228,7 +230,7 @@ class Chunk(Compound):
         return "\n    ".join(data)
 
     @classmethod
-    def _str_constituent_(cls,x: Term | Indexical | Var | MatchVar) -> str:
+    def _str_constituent_(cls, x: Term | Indexical | Var | MatchVar) -> str:
         match x:
             case Term():
                 key = ~x
@@ -242,23 +244,24 @@ class Chunk(Compound):
                 return f"{x.term._name_}({vs})"
 
     @classmethod
-    def _str_dyad_(cls, 
-        d: Term | Indexical | Var | MatchVar, v: Term | Indexical | Var | MatchVar, w: float
-    ) -> str:
+    def _str_dyad_(cls,
+                   d: Term | Indexical | Var | MatchVar, v: Term | Indexical | Var | MatchVar,
+                   w: float
+                   ) -> str:
         s_d = cls._str_constituent_(d)
         s_v = cls._str_constituent_(v)
         sign = "+" if w >= 0 else "-"
         if abs(w) == 1.0:
             return f"{sign} {s_d} ** {s_v}"
-        else:           
+        else:
             return f"{sign}{abs(w)} * {s_d} ** {s_v}"
 
     def __pos__(self: Self) -> Self:
         return self
-    
+
     def __neg__(self: Self) -> Self:
         return type(self)({d: -w for d, w in self._dyads_.items()})
-    
+
     def __rmul__(self, other):
         if isinstance(other, (int, float)):
             return type(self)({d: other * w for d, w in self._dyads_.items()})
@@ -293,9 +296,9 @@ class Chunk(Compound):
         d[self] = 1.0
         return Rule(d)
 
-    def _evaluate_var_(self, 
-        x: Term | Indexical | Var | MatchVar, vals: dict[Var, Term]
-    ) -> Iterable[Term | Indexical]:
+    def _evaluate_var_(self,
+                       x: Term | Indexical | Var | MatchVar, vals: dict[Var, Term]
+                       ) -> Iterable[Term | Indexical]:
         if isinstance(x, (Term, Indexical)):
             return (x,)
         elif isinstance(x, Var):
@@ -303,8 +306,8 @@ class Chunk(Compound):
         elif isinstance(x, MatchVar):
             return x.term._match_(vals)
         else:
-            raise ValueError(f"Unexpected consitutent '{x}' in symbolic chunk " 
-                "annotation.")
+            raise ValueError(f"Unexpected consitutent '{x}' in symbolic chunk "
+                             "annotation.")
 
     def _evaluate_indexicals_(self, x: Term | Indexical) -> Term:
         if isinstance(x, Term):
@@ -312,8 +315,8 @@ class Chunk(Compound):
         elif x is this.chunk:
             return self if self._template_ is None else self._template_
         elif x is this.rule:
-            rule = (self._rule_ if self._template_ is None 
-                else self._template_._rule_)
+            rule = (self._rule_ if self._template_ is None
+                    else self._template_._rule_)
             if rule is None:
                 raise ValueError()
             return rule
@@ -332,7 +335,7 @@ class Chunk(Compound):
             name = f"{self._name_}_{num}"
         except AttributeError as e:
             raise AttributeError("Unnamed abstract chunk.") from e
-        dyads: dict[tuple[Term | Indexical, Term | Indexical], float] = {} 
+        dyads: dict[tuple[Term | Indexical, Term | Indexical], float] = {}
         for (t1, t2), w in self._dyads_.items():
             lhs = self._evaluate_var_(t1, vals)
             rhs = self._evaluate_var_(t2, vals)
@@ -357,7 +360,7 @@ class Chunk(Compound):
                 t1 = self._evaluate_indexicals_(s1)
                 t2 = self._evaluate_indexicals_(s2)
                 kw = kc * ~t1 * ~t2
-                tdw[kw] = w 
+                tdw[kw] = w
         return ChunkData(ciw=ciw, tdw=tdw)
 
 
@@ -370,17 +373,17 @@ class RuleData(TypedDict):
 class Rule(Compound):
     """
     A rule term.
-    
-    Symbolically represents a Clarion rule, together with its constituent 
+
+    Symbolically represents a Clarion rule, together with its constituent
     chunks.
     """
-    _name__ : str
-    _chunks_ : dict[Chunk, float]
+    _name__: str
+    _chunks_: dict[Chunk, float]
 
     def __init__(
-        self, 
-        chunks: dict[Chunk, float] | None = None, 
-        template: Self | None = None
+            self,
+            chunks: dict[Chunk, float] | None = None,
+            template: Self | None = None
     ) -> None:
         chunks = chunks or {}
         super().__init__(template)
@@ -441,7 +444,7 @@ class Rule(Compound):
 
     def _instantiate_(self: Self, vals: dict[Var, Term]) -> Self:
         num = next(self._counter_)
-        try: 
+        try:
             name = f"{self._name_}_{num}"
         except AttributeError as e:
             raise AttributeError("Unnamed abstract rule.") from e
@@ -450,13 +453,13 @@ class Rule(Compound):
             if not c._vars_:
                 chunks[c] = w
                 continue
-            matches = {i for i in c._instances_ 
-                if i._valuation_.issubset(vals.items())}
+            matches = {i for i in c._instances_
+                       if i._valuation_.issubset(vals.items())}
             if len(matches) < 1:
                 raise ValueError("No match")
             if 1 < len(matches):
                 raise ValueError("Vals does not select unique instance")
-            i, = matches 
+            i, = matches
             chunks[i] = w
         inst = type(self)(chunks, self)
         inst._name_ = name
@@ -465,7 +468,9 @@ class Rule(Compound):
         return inst
 
     def _compile_(self: "Rule") -> RuleData:
-        riw = {}; lhw = {}; rhw = {}
+        riw = {};
+        lhw = {};
+        rhw = {}
         kt, kr = (~self,) * 2
         if self._template_ is not None:
             kt = ~self._template_
@@ -486,7 +491,7 @@ type Datamer = Atom | Chunk | Rule | Indexical | Var | MatchVar
 class Bus(Term):
     """
     A data line.
-    
+
     Represents some address for activations.
     """
 

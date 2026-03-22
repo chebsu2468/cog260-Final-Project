@@ -34,27 +34,27 @@ class GradientTape[D: "nd.NumDict"]:
         self.spent = True
         self.tok = type(self).STACK.set(self)
         return self
-    
+
     def __exit__(self, *args):
         type(self).STACK.reset(self.tok)
         del self.tok
-    
+
     @contextmanager
     def no_grad(self):
         tok = type(self).STACK.set(None)
         yield
         type(self).STACK.reset(tok)
 
-    def gradients(self, 
-        output: D,
-        variables: list[D], 
-        seed: D | None = None
-    ) -> list[D]:
+    def gradients(self,
+                  output: D,
+                  variables: list[D],
+                  seed: D | None = None
+                  ) -> list[D]:
         grads = {}
         for current, node in self._iter_nodes(output, seed):
             g = (node.grads[0].sum(*node.grads[1:]) if 1 < len(node.grads)
-                else node.grads[0] if 1 == len(node.grads)  
-                else current.zeros())
+                 else node.grads[0] if 1 == len(node.grads)
+            else current.zeros())
             grads[current] = g
             node.grads.clear()
             if node.gspec is not None:
@@ -74,9 +74,9 @@ class GradientTape[D: "nd.NumDict"]:
             result.append(g)
         return result
 
-    def _iter_nodes(self, 
-            output: D, seed: D | None = None
-        ) -> Iterator[tuple[D, "GradientTape.Node"]]:
+    def _iter_nodes(self,
+                    output: D, seed: D | None = None
+                    ) -> Iterator[tuple[D, "GradientTape.Node"]]:
         if output not in self.nodes:
             raise ValueError("Not in graph")
         self.nodes[output].grads.append(seed or output.ones())
@@ -92,17 +92,17 @@ class GradientTape[D: "nd.NumDict"]:
                 if node.gspec is not None:
                     queue.extend(
                         # This is a hack. Necessary to handle positional args
-                        # that are non-numdict. Convention is that numdicts come 
+                        # that are non-numdict. Convention is that numdicts come
                         # first. Need to clean up in the future.
-                        # E.g., by checking that we are only getting 
+                        # E.g., by checking that we are only getting
                         # positional-only arguments.
-                        cast(Iterable[D], [arg for arg in node.gspec.sig.args 
-                         if isinstance(arg, nd.NumDict)]))
+                        cast(Iterable[D], [arg for arg in node.gspec.sig.args
+                                           if isinstance(arg, nd.NumDict)]))
 
-    def record[**P](self, 
-        f: OpProto[P, D], r: D, d: D, 
-        *args: P.args, **kwargs: P.kwargs
-    ) -> None:
+    def record[**P](self,
+                    f: OpProto[P, D], r: D, d: D,
+                    *args: P.args, **kwargs: P.kwargs
+                    ) -> None:
         sig = signature(f).bind(d, *args, **kwargs)
         self.nodes[r] = self.Node([], self.OpData(f, sig))
         for d in sig.args:

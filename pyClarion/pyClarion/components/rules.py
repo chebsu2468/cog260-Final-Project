@@ -12,7 +12,7 @@ from ..numdicts.ops.base import Unary
 
 class RuleStore(Component):
     """
-    A rule store. 
+    A rule store.
 
     Maintains a collection of rules.
     """
@@ -26,17 +26,18 @@ class RuleStore(Component):
     lhw: Site = Site()
     rhw: Site = Site()
 
-    def __init__(self, 
-        name: str, 
-        r: Family,
-        lhs: Chunks,
-        rhs: Chunks,
-        *,
-        b: float = float("-inf")
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 r: Family,
+                 lhs: Chunks,
+                 rhs: Chunks,
+                 *,
+                 b: float = float("-inf")
+                 ) -> None:
         super().__init__(name)
         self.system.check_root(r, lhs, rhs)
-        self.r = Rules(); r[name] = self.r
+        self.r = Rules();
+        r[name] = self.r
         self.lhs = lhs
         self.rhs = rhs
         self.b = b
@@ -54,7 +55,7 @@ class RuleStore(Component):
         new_rules = [rule for ud in updates for rule in ud.add]
         if new_rules:
             if event.source == self.encode \
-                and self.system.logger.isEnabledFor(logging.DEBUG):
+                    and self.system.logger.isEnabledFor(logging.DEBUG):
                 self.log_encoding(new_rules)
             self.system.schedule(self.encode_weights(*new_rules))
 
@@ -64,11 +65,11 @@ class RuleStore(Component):
             data.append(str(r).replace("\n", "\n    "))
         self.system.logger.debug("\n    ".join(data))
 
-    def encode(self, 
-        *rules: Rule, 
-        dt: timedelta = timedelta(),
-        priority: int = Priority.LEARNING
-    ) -> Event:
+    def encode(self,
+               *rules: Rule,
+               dt: timedelta = timedelta(),
+               priority: int = Priority.LEARNING
+               ) -> Event:
         """Encode a collection of new rules."""
         new_rules = []
         new_lhs_chunks = []
@@ -77,7 +78,7 @@ class RuleStore(Component):
             if hasattr(rule, "_parent_"):
                 if rule not in self.system.root:
                     raise ValueError(f"The following rule belongs to a "
-                        f"different system:\n {rule}")
+                                     f"different system:\n {rule}")
                 continue
             name = next(self.r._namer_)
             if not hasattr(rule, "_name_"):
@@ -105,11 +106,11 @@ class RuleStore(Component):
             updates.append(ChunkUpdate(self.rhs, add=tuple(new_rhs_chunks)))
         return Event(self.encode, updates, dt, priority)
 
-    def encode_weights(self, 
-        *rules: Rule, 
-        dt: timedelta = timedelta(), 
-        priority=Priority.LEARNING
-    ) -> Event:
+    def encode_weights(self,
+                       *rules: Rule,
+                       dt: timedelta = timedelta(),
+                       priority=Priority.LEARNING
+                       ) -> Event:
         bias, riw, lhw, rhw = {}, {}, {}, {}
         for rule in rules:
             data = rule._compile_()
@@ -119,39 +120,39 @@ class RuleStore(Component):
             lhw.update(data["lhw"])
             rhw.update(data["rhw"])
         return Event(self.encode_weights,
-            [ForwardUpdate(self.bias, bias, "write"),
-             ForwardUpdate(self.riw, riw, "write"),
-             ForwardUpdate(self.lhw, lhw, "write"),
-             ForwardUpdate(self.rhw, rhw, "write")],
-            dt, priority)
-    
-    def lhs_layer(self, 
-        name: str, 
-        *, 
-        func: Unary[NumDict] | None = None, 
-        l: int = 1
-    ) -> Layer[Chunks, Rules]:
+                     [ForwardUpdate(self.bias, bias, "write"),
+                      ForwardUpdate(self.riw, riw, "write"),
+                      ForwardUpdate(self.lhw, lhw, "write"),
+                      ForwardUpdate(self.rhw, rhw, "write")],
+                     dt, priority)
+
+    def lhs_layer(self,
+                  name: str,
+                  *,
+                  func: Unary[NumDict] | None = None,
+                  l: int = 1
+                  ) -> Layer[Chunks, Rules]:
         layer = Layer(name, self.lhs, self.r, func=func, l=l)
         layer.weights = self.lhw
         layer.bias = self.bias
         return layer
 
-    def rhs_layer(self, 
-        name: str, 
-        *, 
-        func: Unary[NumDict] | None = None, 
-        l: int = 1
-    ) -> Layer[Rules, Chunks]:
+    def rhs_layer(self,
+                  name: str,
+                  *,
+                  func: Unary[NumDict] | None = None,
+                  l: int = 1
+                  ) -> Layer[Rules, Chunks]:
         layer = Layer(name, self.r, self.rhs, func=func, l=l)
         layer.weights = self.rhw
         return layer
-    
-    def riw_layer(self, 
-        name: str, 
-        *, 
-        func: Unary[NumDict] | None = None, 
-        l: int = 1
-    ) -> Layer[Rules, Rules]:
+
+    def riw_layer(self,
+                  name: str,
+                  *,
+                  func: Unary[NumDict] | None = None,
+                  l: int = 1
+                  ) -> Layer[Rules, Rules]:
         layer = Layer(name, self.r, self.r, func=func, l=l)
         layer.weights = self.riw
         return layer

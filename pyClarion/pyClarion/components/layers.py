@@ -14,8 +14,8 @@ from ..numdicts.ops.tape import GradientTape
 class Mapping[I: Nodes, O: Nodes](Backpropagator):
     """
     Transforms an input signal according to a given function.
-    
-    Implements forward propagation of activation signals and backward 
+
+    Implements forward propagation of activation signals and backward
     propagation of error signals.
     """
 
@@ -25,14 +25,14 @@ class Mapping[I: Nodes, O: Nodes](Backpropagator):
     input: Site = Site(lax=True)
     func: Unary[NumDict] | None
 
-    def __init__(self, 
-        name: str, 
-        i: I,
-        o: O,
-        func: Unary[NumDict] | None = None, 
-        *,
-        l: int = 1
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 i: I,
+                 o: O,
+                 func: Unary[NumDict] | None = None,
+                 *,
+                 l: int = 1
+                 ) -> None:
         super().__init__(name)
         idx_in, idx_out = self._init_indexes(i, o)
         self.i = i
@@ -50,48 +50,48 @@ class Mapping[I: Nodes, O: Nodes](Backpropagator):
         if len(self.tapes) == self.tapes.maxlen and self.main in backward:
             self.system.schedule(self.backward())
 
-    def forward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+    def forward(self,
+                dt: timedelta = timedelta(),
+                priority: Priority = Priority.PROPAGATION
+                ) -> Event:
         """Compute and propagate forward activations."""
         input = self.input[0]
         with GradientTape() as tape:
             main = self.main.new({}).sum(input)
             if self.func is not None:
-                main = self.func(main)        
-        self.push_tape(tape, main, [input])            
-        return Event(self.forward, 
-            [ForwardUpdate(self.main, main)],
-            dt, priority)
-        
-    def backward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+                main = self.func(main)
+        self.push_tape(tape, main, [input])
+        return Event(self.forward,
+                     [ForwardUpdate(self.main, main)],
+                     dt, priority)
+
+    def backward(self,
+                 dt: timedelta = timedelta(),
+                 priority: Priority = Priority.PROPAGATION
+                 ) -> Event:
         """
         Compute gradients and backpropagate errors.
-        
-        Computed gradients from successive calls to this method will accumulate 
-        at gradient sites. This allows layers to receive asynchronous error 
-        signals. 
-        
-        Typically, gradient sites will be cleared by an optimizer after it has 
-        consumed their data for weight updates. 
+
+        Computed gradients from successive calls to this method will accumulate
+        at gradient sites. This allows layers to receive asynchronous error
+        signals.
+
+        Typically, gradient sites will be cleared by an optimizer after it has
+        consumed their data for weight updates.
         """
         tape, main, args = self.tapes[-1]
         g_main = self.main.grad[0]
-        g_i, = tape.gradients(main, args, g_main) 
+        g_i, = tape.gradients(main, args, g_main)
         return Event(self.backward,
-            [BackwardUpdate(self.input, g_i)],
-            dt, priority)
-    
+                     [BackwardUpdate(self.input, g_i)],
+                     dt, priority)
+
 
 class Accumulator[D: Nodes](Backpropagator):
     """
     Transforms an input signal according to a given function.
-    
-    Implements forward propagation of activation signals and backward 
+
+    Implements forward propagation of activation signals and backward
     propagation of error signals.
     """
 
@@ -99,12 +99,12 @@ class Accumulator[D: Nodes](Backpropagator):
     main: Site = Site()
     input: Site = Site(lax=True)
 
-    def __init__(self, 
-        name: str, 
-        d: D,
-        *,
-        l: int = 1
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 d: D,
+                 *,
+                 l: int = 1
+                 ) -> None:
         super().__init__(name)
         idx, = self._init_indexes(d)
         self.d = d
@@ -120,53 +120,53 @@ class Accumulator[D: Nodes](Backpropagator):
         if len(self.tapes) == self.tapes.maxlen and self.main in backward:
             self.system.schedule(self.backward())
 
-    def clear(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+    def clear(self,
+              dt: timedelta = timedelta(),
+              priority: Priority = Priority.PROPAGATION
+              ) -> Event:
         ud = ForwardUpdate(self.main, self.main.new({}))
         return Event(self.clear, [ud], dt, priority)
 
-    def forward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+    def forward(self,
+                dt: timedelta = timedelta(),
+                priority: Priority = Priority.PROPAGATION
+                ) -> Event:
         """Compute and propagate forward activations."""
         input = self.input[0]
         with GradientTape() as tape:
             main = self.main[0].sum(input)
-        self.push_tape(tape, main, [input])            
-        return Event(self.forward, 
-            [ForwardUpdate(self.main, main)],
-            dt, priority)
-        
-    def backward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+        self.push_tape(tape, main, [input])
+        return Event(self.forward,
+                     [ForwardUpdate(self.main, main)],
+                     dt, priority)
+
+    def backward(self,
+                 dt: timedelta = timedelta(),
+                 priority: Priority = Priority.PROPAGATION
+                 ) -> Event:
         """
         Compute gradients and backpropagate errors.
-        
-        Computed gradients from successive calls to this method will accumulate 
-        at gradient sites. This allows layers to receive asynchronous error 
-        signals. 
-        
-        Typically, gradient sites will be cleared by an optimizer after it has 
-        consumed their data for weight updates. 
+
+        Computed gradients from successive calls to this method will accumulate
+        at gradient sites. This allows layers to receive asynchronous error
+        signals.
+
+        Typically, gradient sites will be cleared by an optimizer after it has
+        consumed their data for weight updates.
         """
         tape, main, args = self.tapes[-1]
         g_main = self.main.grad[0]
-        g_i, = tape.gradients(main, args, g_main) 
+        g_i, = tape.gradients(main, args, g_main)
         return Event(self.backward,
-            [BackwardUpdate(self.input, g_i)],
-            dt, priority)
-    
+                     [BackwardUpdate(self.input, g_i)],
+                     dt, priority)
+
 
 class Router[I: Bus, O: Bus, D: SemanticKeySpace](Backpropagator):
     """
     Routes an input signal from one bus to another bus.
-    
-    Implements forward propagation of activation signals and backward 
+
+    Implements forward propagation of activation signals and backward
     propagation of error signals.
     """
     i: I
@@ -176,14 +176,14 @@ class Router[I: Bus, O: Bus, D: SemanticKeySpace](Backpropagator):
     input: Site = Site(lax=True)
     sum_by: KeyForm
 
-    def __init__(self, 
-        name: str, 
-        i: I,
-        o: O,
-        d: D,
-        *,
-        l: int = 1
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 i: I,
+                 o: O,
+                 d: D,
+                 *,
+                 l: int = 1
+                 ) -> None:
         super().__init__(name)
         idx_i, idx_o, idx_d = self._init_indexes(i, o, d)
         self.i = i
@@ -202,46 +202,46 @@ class Router[I: Bus, O: Bus, D: SemanticKeySpace](Backpropagator):
         if len(self.tapes) == self.tapes.maxlen and self.main in backward:
             self.system.schedule(self.backward())
 
-    def forward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+    def forward(self,
+                dt: timedelta = timedelta(),
+                priority: Priority = Priority.PROPAGATION
+                ) -> Event:
         """Compute and propagate forward activations."""
         input = self.input[0]
         with GradientTape() as tape:
             main = self.main.new({}).sum(input.sum(by=self.sum_by))
-        self.push_tape(tape, main, [input])            
-        return Event(self.forward, 
-            [ForwardUpdate(self.main, main)],
-            dt, priority)
-        
-    def backward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+        self.push_tape(tape, main, [input])
+        return Event(self.forward,
+                     [ForwardUpdate(self.main, main)],
+                     dt, priority)
+
+    def backward(self,
+                 dt: timedelta = timedelta(),
+                 priority: Priority = Priority.PROPAGATION
+                 ) -> Event:
         """
         Compute gradients and backpropagate errors.
-        
-        Computed gradients from successive calls to this method will accumulate 
-        at gradient sites. This allows layers to receive asynchronous error 
-        signals. 
-        
-        Typically, gradient sites will be cleared by an optimizer after it has 
-        consumed their data for weight updates. 
+
+        Computed gradients from successive calls to this method will accumulate
+        at gradient sites. This allows layers to receive asynchronous error
+        signals.
+
+        Typically, gradient sites will be cleared by an optimizer after it has
+        consumed their data for weight updates.
         """
         tape, main, args = self.tapes[-1]
         g_main = self.main.grad[0]
-        g_i, = tape.gradients(main, args, g_main) 
+        g_i, = tape.gradients(main, args, g_main)
         return Event(self.backward,
-            [BackwardUpdate(self.input, g_i)],
-            dt, priority)
+                     [BackwardUpdate(self.input, g_i)],
+                     dt, priority)
 
 
 class Layer[I: Nodes, O: Nodes](Backpropagator):
     """
     A neural network layer.
-    
-    Implements forward propagation of activation signals and backward 
+
+    Implements forward propagation of activation signals and backward
     propagation of error signals.
     """
 
@@ -255,14 +255,14 @@ class Layer[I: Nodes, O: Nodes](Backpropagator):
     fw_by: KeyForm
     bw_by: KeyForm
 
-    def __init__(self, 
-        name: str, 
-        i: I,
-        o: O,
-        *, 
-        func: Unary[NumDict] | None = None, 
-        l: int = 1
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 i: I,
+                 o: O,
+                 *,
+                 func: Unary[NumDict] | None = None,
+                 l: int = 1
+                 ) -> None:
         super().__init__(name)
         idx_in, idx_out = self._init_indexes(i, o)
         self.i = i
@@ -284,46 +284,46 @@ class Layer[I: Nodes, O: Nodes](Backpropagator):
         if len(self.tapes) == self.tapes.maxlen and self.main in backward:
             self.system.schedule(self.backward())
 
-    def forward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+    def forward(self,
+                dt: timedelta = timedelta(),
+                priority: Priority = Priority.PROPAGATION
+                ) -> Event:
         """Compute and propagate forward activations."""
         input, weights, bias = self.input[0], self.weights[0], self.bias[0]
         with GradientTape() as tape:
             main = (weights
-                .mul(input, by=self.fw_by)
-                .sum(by=self.bw_by)
-                .sum(bias))
+                    .mul(input, by=self.fw_by)
+                    .sum(by=self.bw_by)
+                    .sum(bias))
             if self.func:
-                main = self.func(main)        
-        self.push_tape(tape, main, [input, weights, bias])            
-        return Event(self.forward, 
-            [ForwardUpdate(self.main, main)],
-            dt, priority)
-        
-    def backward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+                main = self.func(main)
+        self.push_tape(tape, main, [input, weights, bias])
+        return Event(self.forward,
+                     [ForwardUpdate(self.main, main)],
+                     dt, priority)
+
+    def backward(self,
+                 dt: timedelta = timedelta(),
+                 priority: Priority = Priority.PROPAGATION
+                 ) -> Event:
         """
         Compute gradients and backpropagate errors.
-        
-        Computed gradients from successive calls to this method will accumulate 
-        at gradient sites. This allows layers to receive asynchronous error 
-        signals. 
-        
-        Typically, gradient sites will be cleared by an optimizer after it has 
-        consumed their data for weight updates. 
+
+        Computed gradients from successive calls to this method will accumulate
+        at gradient sites. This allows layers to receive asynchronous error
+        signals.
+
+        Typically, gradient sites will be cleared by an optimizer after it has
+        consumed their data for weight updates.
         """
         tape, main, args = self.tapes[-1]
         g_main = self.main.grad[0]
-        g_i, g_w, g_b = tape.gradients(main, args, g_main) 
+        g_i, g_w, g_b = tape.gradients(main, args, g_main)
         return Event(self.backward,
-            [BackwardUpdate(self.input, g_i),
-             BackwardUpdate(self.weights, g_w, "add"),
-             BackwardUpdate(self.bias, g_b, "add")],
-            dt, priority)
+                     [BackwardUpdate(self.input, g_i),
+                      BackwardUpdate(self.weights, g_w, "add"),
+                      BackwardUpdate(self.bias, g_b, "add")],
+                     dt, priority)
 
 
 class Pool[D: Nodes](Parametric, Backpropagator):
@@ -345,15 +345,15 @@ class Pool[D: Nodes](Parametric, Backpropagator):
     agg: Aggregator[NumDict]
     post: Unary[NumDict] | None
 
-    def __init__(self, 
-        name: str, 
-        p: Family, 
-        d: D, 
-        *, 
-        agg: Aggregator[NumDict] = cam, 
-        post: Unary[NumDict] | None = None,
-        l: int = 1
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 p: Family,
+                 d: D,
+                 *,
+                 agg: Aggregator[NumDict] = cam,
+                 post: Unary[NumDict] | None = None,
+                 l: int = 1
+                 ) -> None:
         super().__init__(name)
         index, = self._init_indexes(d)
         psort, psite = self._init_sort(p, type(self).Params, l=l)
@@ -388,34 +388,34 @@ class Pool[D: Nodes](Parametric, Backpropagator):
             with self.params[0].mutable():
                 self.params[0][key] = 1.0
         return self
-        
+
     def resolve(self, event: Event) -> None:
         gradients = event.index(BackwardUpdate)
         if len(self.tapes) == self.tapes.maxlen and self.main in gradients:
-            self.system.schedule(self.backward()) 
+            self.system.schedule(self.backward())
 
-    def forward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PROPAGATION
-    ) -> Event:
+    def forward(self,
+                dt: timedelta = timedelta(),
+                priority: Priority = Priority.PROPAGATION
+                ) -> Event:
         with GradientTape() as tape:
-            inputs = [s[0].scale(self.params[0][k]).reindex(self.main.index.kf) 
-                for k, s in self.inputs.items()]
+            inputs = [s[0].scale(self.params[0][k]).reindex(self.main.index.kf)
+                      for k, s in self.inputs.items()]
             aggregate = self.agg(*inputs)
             if (post := self.post) is None:
                 main = aggregate
             else:
                 main = post(aggregate)
         self.push_tape(tape, main, [s[0] for s in self.inputs.values()])
-        return Event(self.forward, 
-            [ForwardUpdate(self.main, main), 
-             ForwardUpdate(self.aggregate, aggregate)], 
-            dt, priority)
-    
-    def backward(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.LEARNING
-    ) -> Event:
+        return Event(self.forward,
+                     [ForwardUpdate(self.main, main),
+                      ForwardUpdate(self.aggregate, aggregate)],
+                     dt, priority)
+
+    def backward(self,
+                 dt: timedelta = timedelta(),
+                 priority: Priority = Priority.LEARNING
+                 ) -> Event:
         tape, main, inputs = self.tapes[-1]
         g_agg = self.main.grad[0]
         grads = tape.gradients(main, inputs, g_agg)

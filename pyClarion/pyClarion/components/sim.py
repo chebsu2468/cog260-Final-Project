@@ -24,7 +24,7 @@ class Simulation[R: Root](Component):
         """Process and yield each queued event in system."""
         while self.system.queue and self.system.clock.has_time:
             yield self.system.advance()
-    
+
     def run_all(self) -> None:
         """Process all queued events."""
         self.system.run_all()

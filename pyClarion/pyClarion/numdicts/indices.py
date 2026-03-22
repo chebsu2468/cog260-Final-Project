@@ -1,4 +1,3 @@
-
 from typing import overload, Any, Iterator
 from itertools import product
 from weakref import WeakSet
@@ -6,7 +5,7 @@ from math import prod
 
 from pyClarion.numdicts.keyspaces import KSChild
 
-from.keys import Key, KeyForm
+from .keys import Key, KeyForm
 from .keyspaces import KSPath, KSRoot, KSParent, KSObserver, KeyGroup, ks_root
 
 
@@ -22,25 +21,25 @@ class Index[R: KSRoot](KSObserver):
 
     @overload
     def __init__(
-        self, root: R, form: Key | str, tup: tuple[int, ...]
+            self, root: R, form: Key | str, tup: tuple[int, ...]
     ) -> None:
         ...
 
-    def __init__(self, 
-        root: R, 
-        form: KeyForm | Key | str, 
-        tup: tuple[int, ...] | None = None
-    ) -> None:
+    def __init__(self,
+                 root: R,
+                 form: KeyForm | Key | str,
+                 tup: tuple[int, ...] | None = None
+                 ) -> None:
         if isinstance(form, (Key, str)) and tup is not None:
             form = KeyForm(Key(form), tup)
         elif isinstance(form, (Key, str)):
             form = KeyForm.from_key(Key(form))
         elif not isinstance(form, KeyForm):
             raise TypeError("Unexpected input to Index.")
-        form = form.strip # make sure the form contains no placeholders
+        form = form.strip  # make sure the form contains no placeholders
         leaves, heights, levels = self._init(root, form)
         self.root = root
-        self.kf = form 
+        self.kf = form
         self.observers = WeakSet()
         self.groups = {i: KeyGroup(levels[i], heights[i]) for i in leaves}
         for ksp in levels:
@@ -49,7 +48,7 @@ class Index[R: KSRoot](KSObserver):
 
     @staticmethod
     def _init(root: KSRoot, keyform: KeyForm) \
-        -> tuple[list[int], dict[int, int], list[KSPath]]:
+            -> tuple[list[int], dict[int, int], list[KSPath]]:
         keyspaces, parents = [], []
         leaves, hs, heights = [], iter(keyform.h), {}
         for i, (label, degree) in enumerate(keyform.k):
@@ -63,7 +62,7 @@ class Index[R: KSRoot](KSObserver):
             if degree == 0:
                 heights[i] = next(hs)
                 leaves.append(i)
-        return leaves, heights, keyspaces 
+        return leaves, heights, keyspaces
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Index):
@@ -90,7 +89,7 @@ class Index[R: KSRoot](KSObserver):
             result = self.kf.k
             # We append in reverse order because this preserves indices
             for i, s in zip(reversed(self.groups), reversed(suite)):
-                if s: # s == Key() when h == 0, in which case don't append. 
+                if s:  # s == Key() when h == 0, in which case don't append.
                     result = result.link(s, i, ())
             yield result
 
@@ -116,12 +115,12 @@ class Index[R: KSRoot](KSObserver):
             matches = leaf.find_in(key)
             if matches and key.size <= leaf.size + group.h:
                 return True
-        return False        
-    
+        return False
+
     def on_del(self, parent: KSParent, child: KSChild) -> None:
         if self.requires(child):
             raise RuntimeError(f"Cannot delete key {~child}: "
-                f"Required by index {self}")
+                               f"Required by index {self}")
         if self.depends_on(child):
             for observer in self.observers:
                 observer.on_del(self, ~child)
@@ -132,7 +131,7 @@ class IndexObserver:
 
     def register(self, index: Index) -> None:
         index.observers.add(self)
-    
+
     def on_add(self, index: Index, key: Key) -> None:
         pass
 

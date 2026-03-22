@@ -19,16 +19,16 @@ class OpMethod[**P, D: "nd.NumDict"]:
         self.__name__ = op.__name__
         self.__func__ = op
         self.__self__ = obj
-    
+
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> D:
         return self.__func__(self.__self__, *args, **kwargs)
-    
+
 
 class OpBase[D: "nd.NumDict"]:
-    
+
     __slots__ = (
         "__name__", "__qualname__", "__objclass__", "__signature__", "__call__")
-    __name__ : str
+    __name__: str
     __qualname__: str
     __signature__: Signature
     __objclass__: type[D]
@@ -42,12 +42,12 @@ class OpBase[D: "nd.NumDict"]:
         self.set_signature(owner)
 
     @overload
-    def __get__[**P](self: OpProto[P, D], 
-        obj: D, 
-        objtype: type[D] | None = None
-    ) -> OpMethod[P, D]:
-        ... 
-        
+    def __get__[**P](self: OpProto[P, D],
+                     obj: D,
+                     objtype: type[D] | None = None
+                     ) -> OpMethod[P, D]:
+        ...
+
     @overload
     def __get__[T](self, obj: T, objtype: type[T] | None = None) -> Self:
         ...
@@ -78,7 +78,7 @@ class Constant[D: "nd.NumDict"](OpBase[D]):
     def grad(self, g: D, r: D, d: D, /) -> D:
         return d.zeros()
 
-    
+
 class Unary[D: "nd.NumDict"](OpBase[D]):
     kernel: ClassVar[Callable[[float], float]]
 
@@ -88,10 +88,10 @@ class Unary[D: "nd.NumDict"](OpBase[D]):
         if tape is not None:
             tape.record(self, r, d)
         return r
-    
+
     def grad(self, g: D, r: D, d: D, /) -> D:
         raise NotImplementedError()
-    
+
 
 class UnaryDiscrete[D: "nd.NumDict"](Unary[D]):
     def grad(self, g: D, r: D, d: D, /) -> D:
@@ -138,7 +138,8 @@ class UnaryRV[D: "nd.NumDict"](OpBase[D]):
 class BinaryRV[D: "nd.NumDict"](OpBase[D]):
     kernel: ClassVar[Callable[[float, float], float]]
 
-    def __call__(self, d1: D, d2: D, /, by: KeyForm | None = None, c: float | _Undefined | None = None) -> D:
+    def __call__(self, d1: D, d2: D, /, by: KeyForm | None = None,
+                 c: float | _Undefined | None = None) -> D:
         mode = "self" if isinstance(d1._c, _Undefined) else "full"
         it = collect(d1, d2, branches=by, mode=mode)
         c = c if c is not None else d1._c
@@ -149,7 +150,8 @@ class BinaryRV[D: "nd.NumDict"](OpBase[D]):
             tape.record(self, r, d1, d2, by=by, c=c)
         return r
 
-    def grad(self, g: "nd.NumDict", r: D, d1: D, d2: D, /, by: KeyForm | None = None, c: float | _Undefined | None = None) -> tuple[D, D]:
+    def grad(self, g: "nd.NumDict", r: D, d1: D, d2: D, /, by: KeyForm | None = None,
+             c: float | _Undefined | None = None) -> tuple[D, D]:
         raise NotImplementedError()
 
 
@@ -157,12 +159,15 @@ class Aggregator[D: "nd.NumDict"](OpBase[D]):
     kernel: ClassVar[Callable[[Sequence[float]], float]]
     eye: ClassVar[float]
 
-    def __call__(self, d: D, /, *ds: D, by: KeyForm | Sequence[KeyForm | None] | None = None, c: float | _Undefined | None = None) -> D:
+    def __call__(self, d: D, /, *ds: D, by: KeyForm | Sequence[KeyForm | None] | None = None,
+                 c: float | _Undefined | None = None) -> D:
         r = variadic(d, *ds, by=by, c=c, kernel=type(self).kernel, eye=type(self).eye)
         tape = GradientTape.STACK.get()
         if tape is not None:
             tape.record(self, r, d, *ds, by=by, c=c)
         return r
 
-    def grad(self, g: D, r: D, d: D, /, *ds: D, by: KeyForm | Sequence[KeyForm | None] | None = None, c: float | _Undefined | None = None) -> D | Sequence[D]:
+    def grad(self, g: D, r: D, d: D, /, *ds: D,
+             by: KeyForm | Sequence[KeyForm | None] | None = None,
+             c: float | _Undefined | None = None) -> D | Sequence[D]:
         raise NotImplementedError()

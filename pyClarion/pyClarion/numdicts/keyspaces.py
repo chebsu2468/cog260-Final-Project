@@ -8,7 +8,7 @@ from .keys import Key, KeyForm
 
 class KSProtocol(Protocol):
     """Protocol for keyspace classes."""
-    
+
     def __contains__(self, key: str | Key) -> bool:
         """True iff key is a member of self"""
         ...
@@ -40,7 +40,7 @@ class KSProduct[*Ts](KSProtocol):
         for ks in paths:
             if not isinstance(ks, KSPath):
                 raise TypeError(f"Arguments to {type(self).__name__} must be "
-                    f"of type {KSPath}")
+                                f"of type {KSPath}")
         self.paths = paths
 
     @property
@@ -63,10 +63,10 @@ class KSProduct[*Ts](KSProtocol):
     @overload
     def __mul__[T: KSPath](self, other: T) -> "KSProduct[*Ts, T]":
         ...
-    
+
     @overload
     def __mul__[*Us](self, other: "KSProduct[*Us]") \
-        -> "KSProduct[*Ts, *Us]":
+            -> "KSProduct[*Ts, *Us]":
         ...
 
     def __mul__(self, other):
@@ -90,16 +90,16 @@ class KSProduct[*Ts](KSProtocol):
                 return kf
             case _:
                 raise ValueError(f"Expected exactly {len(self.paths)} heights, "
-                    f"got {len(hs)}")
+                                 f"got {len(hs)}")
 
     def _iter_(self, *hs: int) -> Iterator[Key]:
         iterables = [KeyGroup(ks, h) if isinstance(ks, KSParent) else ()
-            for ks, h in zip(self.paths, hs, strict=True)]
+                     for ks, h in zip(self.paths, hs, strict=True)]
         for keys in product(*iterables):
             k = keys[0]
             for k_i in keys[1:]:
                 k = k * k_i
-            yield k        
+            yield k
         return
 
 
@@ -118,7 +118,7 @@ class KSPath(KSProtocol):
     @overload
     def __mul__[T: KSPath](self: Self, other: T) -> KSProduct[Self, T]:
         ...
-    
+
     @overload
     def __mul__[*Ts](self: Self, other: KSProduct[*Ts]) -> KSProduct[Self, *Ts]:
         ...
@@ -129,18 +129,18 @@ class KSPath(KSProtocol):
         if isinstance(other, KSProduct):
             return KSProduct(self, *other.paths)
         return NotImplemented
-    
+
     def _keyform_(self, *hs: int) -> KeyForm:
         match hs:
             case ():
                 return KeyForm(~self, (self._h_offset_,))
-            case (h,):
+            case (h, ):
                 h_effective = h + self._h_offset_
                 if 0 <= h_effective:
                     return KeyForm(~self, (h_effective,))
                 if (i := (key := ~self).size + h_effective) < 0:
                     raise ValueError(f"Cannot prune {h + self._h_offset_} "
-                        f"nodes off {key}")
+                                     f"nodes off {key}")
                 key, _ = key.cut(i)
                 return KeyForm(key, (h + self._h_offset_,))
             case _:
@@ -154,7 +154,7 @@ class KSPath(KSProtocol):
 class KSParent[M: "KSChild"](KSPath):
     """
     Base class for parent keyspaces.
-    
+
     Do not instantiate this class directly.
     """
     _h_offset_ = 1
@@ -226,7 +226,7 @@ class KSParent[M: "KSChild"](KSPath):
 class KSChild(KSPath):
     """
     Base class for child keyspaces.
-    
+
     Do not instantiate this class directly.
     """
     _parent_: KSParent
@@ -246,9 +246,10 @@ class KSChild(KSPath):
 class KSRoot[M: KSChild](KSParent[M]):
     """
     A generic keyspace root.
-    
+
     Do not instantiate this class directly.
     """
+
     def __init__(self):
         self._name_ = ""
         self._members_ = {}
@@ -258,9 +259,10 @@ class KSRoot[M: KSChild](KSParent[M]):
 class KSNode[M: "KSChild"](KSChild, KSParent[M]):
     """
     A generic keyspace node.
-    
+
     Do not instantiate this class directly.
     """
+
     def __init__(self, name: str = ""):
         self._name_ = name
         self._members_ = {}
@@ -269,9 +271,9 @@ class KSNode[M: "KSChild"](KSChild, KSParent[M]):
 
 class KeyGroup:
     """
-    A grouping of elementary keys within a keyspace. 
-    
-    The group is identified by the host keyspace and an integer designating the 
+    A grouping of elementary keys within a keyspace.
+
+    The group is identified by the host keyspace and an integer designating the
     height of the keyspace relative to the units of analysis.
     """
     __slots__ = ("ks", "h")
@@ -290,8 +292,8 @@ class KeyGroup:
         if self.h <= 0:
             return 1
         elif isinstance(self.ks, KSParent):
-            return sum([len(KeyGroup(ks, self.h - 1)) 
-                for ks in self.ks._members_.values()])
+            return sum([len(KeyGroup(ks, self.h - 1))
+                        for ks in self.ks._members_.values()])
         else:
             return 0
 
@@ -305,7 +307,7 @@ class KeyGroup:
 class KSObserver:
     """
     Base class for keyspace observers.
-    
+
     Do not instantiate this class directly.
     """
 
@@ -350,20 +352,23 @@ def ks_crawl(ks: KSParent, path: str | Key) -> KSPath:
         if not isinstance(ks, KSParent):
             raise ValidationError(f"{key} not a member of {ks}")
         ksp = ksp[label]
-    return ksp 
+    return ksp
 
 
 @overload
 def keyform(__ks: KSPath | KSProduct) -> KeyForm:
     ...
 
+
 @overload
 def keyform(__ks: KSPath, __h: int) -> KeyForm:
     ...
 
+
 @overload
 def keyform(__ks: KSProtocol, *hs: int) -> KeyForm:
     ...
+
 
 def keyform(__ks: KSProtocol, *hs: int) -> KeyForm:
     """Construct a keyform from a keyspace."""

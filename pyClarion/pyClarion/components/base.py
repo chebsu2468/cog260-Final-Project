@@ -17,9 +17,9 @@ type DV = tuple[D, V]
 class Priority(IntEnum):
     """
     An event priority enum.
-    
-    Used to indicate event priority in case two events are scheduled at the 
-    same time within a simulation. 
+
+    Used to indicate event priority in case two events are scheduled at the
+    same time within a simulation.
     """
     MAX = 128
     PARAM = 120
@@ -43,18 +43,18 @@ class RuleUpdate(KeyspaceUpdate[Rules, Rule]):
 
 
 class Component(Process[Root]):
-    
+
     def __init__(self, name: str, root: Root | None = None) -> None:
         super().__init__(name, root or Root())
 
     def __rshift__[T](self: Self, other: T) -> T:
         input = getattr(other, "input", None)
         main = getattr(self, "main", None)
-        if isinstance(input, State) and isinstance(main, State) :
+        if isinstance(input, State) and isinstance(main, State):
             setattr(other, "input", main)
             return other
         return NotImplemented
-     
+
     def __rrshift__(self: Self, other: Any) -> Self:
         input = getattr(self, "input", None)
         if isinstance(input, State):
@@ -83,37 +83,38 @@ class Component(Process[Root]):
                     indices.append(idx_d)
         return indices
 
-    def _init_sort[S: Sort](self, 
-        family: Family, 
-        sort_cls: type[S],
-        c: float = float("nan"), 
-        l: int = 1,
-        **params: float
-    ) -> tuple[S, State]:
+    def _init_sort[S: Sort](self,
+                            family: Family,
+                            sort_cls: type[S],
+                            c: float = float("nan"),
+                            l: int = 1,
+                            **params: float
+                            ) -> tuple[S, State]:
         self.system.check_root(family)
-        sort = sort_cls(); family[self.name] = sort
+        sort = sort_cls();
+        family[self.name] = sort
         site = State(
-            i=self.system.get_index(keyform(sort)), 
-            d={~sort[k]: v for k, v in params.items()}, 
+            i=self.system.get_index(keyform(sort)),
+            d={~sort[k]: v for k, v in params.items()},
             c=c,
             l=l)
         return sort, site
-    
+
 
 class Parametric[P: Atoms](Component):
     p: P
     params: Site = Site()
 
-    def set_params(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.PARAM,
-        **kwargs: float
-    ) -> Event:
+    def set_params(self,
+                   dt: timedelta = timedelta(),
+                   priority: Priority = Priority.PARAM,
+                   **kwargs: float
+                   ) -> Event:
         data = {~self.p[param]: value for param, value in kwargs.items()}
-        return Event(self.set_params, 
-            [ForwardUpdate(self.params, data, "write")], 
-            dt, priority)
-    
+        return Event(self.set_params,
+                     [ForwardUpdate(self.params, data, "write")],
+                     dt, priority)
+
 
 class Stateful[S: Atoms](Component):
     s: S
@@ -127,7 +128,7 @@ class Stateful[S: Atoms](Component):
     @property
     def current_status(self) -> Key:
         return self.status[0].argmax()
-    
+
     @property
     def locked(self) -> bool:
         if self.current_status != ~self.s[next(iter(self.s))]:
@@ -136,26 +137,26 @@ class Stateful[S: Atoms](Component):
             return True
         return False
 
-    def _trigger(self, 
-        source: Callable[..., Event],
-        state: Atom,
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.DEFERRED
-    ) -> Event:
+    def _trigger(self,
+                 source: Callable[..., Event],
+                 state: Atom,
+                 dt: timedelta = timedelta(),
+                 priority: Priority = Priority.DEFERRED
+                 ) -> Event:
         if self.locked:
             raise RuntimeError(f"Process {self.name} already triggered.")
-        return Event(source, 
-            [ForwardUpdate(self.status, {~state: 1.0})], 
-            dt, priority)
+        return Event(source,
+                     [ForwardUpdate(self.status, {~state: 1.0})],
+                     dt, priority)
 
-    def _terminate(self, 
-        source: Callable[..., Event],
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.DEFERRED
-    ) -> Event:
-        return Event(source, 
-            [ForwardUpdate(self.status, {~self.s[next(iter(self.s))]: 1.0})], 
-            dt, priority)
+    def _terminate(self,
+                   source: Callable[..., Event],
+                   dt: timedelta = timedelta(),
+                   priority: Priority = Priority.DEFERRED
+                   ) -> Event:
+        return Event(source,
+                     [ForwardUpdate(self.status, {~self.s[next(iter(self.s))]: 1.0})],
+                     dt, priority)
 
 
 class Backpropagator(Component):
@@ -163,9 +164,9 @@ class Backpropagator(Component):
     forward: Callable[..., Event]
     backward: Callable[..., Event]
 
-    def push_tape(self, 
-        tape: GradientTape, 
-        main: NumDict, 
-        args: list[NumDict]
-    ) -> None:
+    def push_tape(self,
+                  tape: GradientTape,
+                  main: NumDict,
+                  args: list[NumDict]
+                  ) -> None:
         self.tapes.appendleft((tape, main, args))

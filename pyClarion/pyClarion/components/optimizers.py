@@ -8,9 +8,9 @@ from ..knowledge import Family, Atoms, Atom
 
 class Optimizer[P: Atoms](Parametric):
     """
-    A neural network optimization process. 
+    A neural network optimization process.
 
-    Issues updates to weights and biases of a collection of layers. 
+    Issues updates to weights and biases of a collection of layers.
     """
 
     Params: type[P]
@@ -28,15 +28,15 @@ class Optimizer[P: Atoms](Parametric):
         """Include sites in future updates."""
         self.sites.update(states)
 
-    def update(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.LEARNING
-    ) -> Event:
+    def update(self,
+               dt: timedelta = timedelta(),
+               priority: Priority = Priority.LEARNING
+               ) -> Event:
         """Compute and schedule parameter updates for all client layers."""
-        return Event(self.update, 
-            [ud for s in self.sites for ud in self.state_updates(s)], 
-            dt, priority)
-    
+        return Event(self.update,
+                     [ud for s in self.sites for ud in self.state_updates(s)],
+                     dt, priority)
+
     def state_updates(self, state: State) -> Sequence[Update]:
         raise NotImplementedError()
 
@@ -44,8 +44,8 @@ class Optimizer[P: Atoms](Parametric):
 class SGD(Optimizer):
     """
     A stochastic gradient descent process.
-    
-    Issues updates to weights and biases of a collection of layers using 
+
+    Issues updates to weights and biases of a collection of layers using
     stochastic gradient descent.
     """
 
@@ -64,32 +64,32 @@ class SGD(Optimizer):
 class Adam(Optimizer):
     """
     An adaptive moment estimation (Adam) process.
-    
-    Issues updates to weights and biases of a collection of layers using 
+
+    Issues updates to weights and biases of a collection of layers using
     adaptive moment estimation.
     """
 
     class Params(Atoms):
-        lr: Atom # Learning rate
-        b1: Atom # Exponential decay rate for moment 1
-        b2: Atom # Exponential decay rate for moment 2
-        ep: Atom # Epsilon
-        bt1: Atom 
+        lr: Atom  # Learning rate
+        b1: Atom  # Exponential decay rate for moment 1
+        b2: Atom  # Exponential decay rate for moment 2
+        ep: Atom  # Epsilon
+        bt1: Atom
         bt2: Atom
-    
+
     # Maybe these should be weak key dicts?
     m1: dict[State, State]
     m2: dict[State, State]
 
-    def __init__(self, 
-        name: str, 
-        p: Family, 
-        *, 
-        lr: float = 1e-2,
-        b1: float = 9e-1,
-        b2: float = .999, 
-        ep: float = 1e-8
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 p: Family,
+                 *,
+                 lr: float = 1e-2,
+                 b1: float = 9e-1,
+                 b2: float = .999,
+                 ep: float = 1e-8
+                 ) -> None:
         super().__init__(name, p, lr=lr, b1=b1, b2=b2, ep=ep, bt1=b1, bt2=b2)
         self.m1 = {}
         self.m2 = {}
@@ -101,9 +101,9 @@ class Adam(Optimizer):
             self.m2[s] = State(s.index, {}, 0.0)
 
     def update(self,
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.LEARNING
-    ) -> Event:
+               dt: timedelta = timedelta(),
+               priority: Priority = Priority.LEARNING
+               ) -> Event:
         event = super().update(dt, priority)
         b1 = self.params[0][~self.p.b1]
         b2 = self.params[0][~self.p.b2]
@@ -114,12 +114,12 @@ class Adam(Optimizer):
         assert isinstance(event.updates, list)
         event.updates.append(
             ForwardUpdate(self.params,
-                {~self.p.bt1: bt1, ~self.p.bt2: bt2}, 
-                "write"))
+                          {~self.p.bt1: bt1, ~self.p.bt2: bt2},
+                          "write"))
         return event
 
     def state_updates(self, state: State) \
-        -> tuple[Update, Update, Update, Update]:
+            -> tuple[Update, Update, Update, Update]:
         lr = self.params[0][~self.p.lr]
         b1 = self.params[0][~self.p.b1]
         b2 = self.params[0][~self.p.b2]
@@ -129,13 +129,13 @@ class Adam(Optimizer):
         m, v = self.m1[state], self.m2[state]
         m_next = m[0].scale(b1).sum(state.grad[-1].scale(1 - b1))
         v_next = v[0].scale(b2).sum(state.grad[-1].pow(2).scale(1 - b2))
-        m_hat = m_next.scale(1/(1 - bt1))
-        v_hat = v_next.scale(1/(1 - bt2))
+        m_hat = m_next.scale(1 / (1 - bt1))
+        v_hat = v_next.scale(1 / (1 - bt2))
         g_hat = m_hat.div(v_hat.pow(0.5).shift(ep))
         delta = (g_hat
-            .scale(-lr))
+                 .scale(-lr))
         return (
             BackwardUpdate(state, {}),
-            ForwardUpdate(state, delta, "add"),  
-            ForwardUpdate(m, m_next), 
+            ForwardUpdate(state, delta, "add"),
+            ForwardUpdate(m, m_next),
             ForwardUpdate(v, v_next))

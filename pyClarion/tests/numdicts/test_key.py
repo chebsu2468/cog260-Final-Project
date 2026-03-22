@@ -11,29 +11,29 @@ class KeyRepresentationTestCase(unittest.TestCase):
             ("a:b:c:d", (("", 1), ("a", 1), ("b", 1), ("c", 1), ("d", 0))),
             ("(a,b,c,d)", (("", 4), ("a", 0), ("b", 0), ("c", 0), ("d", 0))),
             ("a:(b,c):(d,(e,f))",
-                (("", 1), ("a", 2), ("b", 1), ("c", 2), ("d", 0), ("e", 0), 
-                    ("f", 0))),
+             (("", 1), ("a", 2), ("b", 1), ("c", 2), ("d", 0), ("e", 0),
+              ("f", 0))),
             ("a:(b,c,d):(e,(f,g),):(,(,h),)",
-                (("", 1), ("a", 3), ("b", 1), ("c", 2), ("d", 0), ("e", 0), 
-                    ("f", 0), ("g", 1), ("h", 0))),
+             (("", 1), ("a", 3), ("b", 1), ("c", 2), ("d", 0), ("e", 0),
+              ("f", 0), ("g", 1), ("h", 0))),
             ("(a,b):(c,(d,e)):(,(f,(g,h))):(,(,(,i)))",
-                (("", 2), ("a", 1), ("b", 2), ("c", 0), ("d", 1), ("e", 2), 
-                    ("f", 0), ("g", 0), ("h", 1), ("i", 0)))]
+             (("", 2), ("a", 1), ("b", 2), ("c", 0), ("d", 1), ("e", 2),
+              ("f", 0), ("g", 0), ("h", 1), ("i", 0)))]
         self.invalid_keys = [
-            ("a:(b, c)",           "Space character in key stirng"),
-            ("a::b",               "Two ':' in a row"),
-            ("a:(b,,c)",           "Two ',' in a row in fresh parens"),
-            ("a:()",               "Empty parens"),
-            ("a:(b)",              "Redundant parens"),
-            ("a:b,c):(d,e)",       "Missing '(' in fresh parens"),
-            ("a:(b,c):d,e)",       "Missing '(' in established parens"),
-            ("a:(b,c:(d,e)",       "Missing ')' in fresh parens"),
-            ("a:(b,c):(d,e",       "Missing ')' in established parens"),
-            ("a:(b,c,d):(e,f)",    "Missing ',' in established parens"),
-            ("a:(b,c)(d,e)",       "Missing ':' after fresh parens"),
+            ("a:(b, c)", "Space character in key stirng"),
+            ("a::b", "Two ':' in a row"),
+            ("a:(b,,c)", "Two ',' in a row in fresh parens"),
+            ("a:()", "Empty parens"),
+            ("a:(b)", "Redundant parens"),
+            ("a:b,c):(d,e)", "Missing '(' in fresh parens"),
+            ("a:(b,c):d,e)", "Missing '(' in established parens"),
+            ("a:(b,c:(d,e)", "Missing ')' in fresh parens"),
+            ("a:(b,c):(d,e", "Missing ')' in established parens"),
+            ("a:(b,c,d):(e,f)", "Missing ',' in established parens"),
+            ("a:(b,c)(d,e)", "Missing ':' after fresh parens"),
             ("a:(b,c):(d,e)(f,g)", "Missing ':' after established parens"),
-            ("a:(b,c),d",          "Unexpected ',' after fresh parens"),
-            ("a:((b,c),d)",        "Fresh parens in fresh parens")
+            ("a:(b,c),d", "Unexpected ',' after fresh parens"),
+            ("a:((b,c),d)", "Fresh parens in fresh parens")
         ]
 
     def test_parse_of_valid_key_strings(self):
@@ -56,23 +56,23 @@ class KeyPartialOrderingTestCase(unittest.TestCase):
 
     def setUp(self):
         self.equal_keys = [
-            "", 
-            "a", 
-            "a:b:c:d", 
-            "a:(b,c):(d,(e,f))", 
+            "",
+            "a",
+            "a:b:c:d",
+            "a:(b,c):(d,(e,f))",
             "a:(b,c,d):(e,(f,g),):(,(,h),)",
             "(a,b):(c,(d,e)):(,(f,(g,h))):(,(,(,i)))"]
         self.ordered_pairs = [
-            ("",             "a"),
-            ("a",            "a:b"),
-            ("a:b:d",        "a:(b,c):(d,(e,f))"),
-            ("a:b:d",        "a:(b,b):(,d)"),
-            ("a:b",          "(a,a):(b,b)")]
+            ("", "a"),
+            ("a", "a:b"),
+            ("a:b:d", "a:(b,c):(d,(e,f))"),
+            ("a:b:d", "a:(b,b):(,d)"),
+            ("a:b", "(a,a):(b,b)")]
         self.unordered_pairs = [
-            ("a:b",          "a:c"),
-            ("a:b:g",        "a:(b,c):(d,(e,f))"),
+            ("a:b", "a:c"),
+            ("a:b:g", "a:(b,c):(d,(e,f))"),
             ("a:(g,c):(,e)", "a:(b,c):(d,(e,f))"),
-            ("(a,a):(b,c)",  "a:(b,c)")]
+            ("(a,a):(b,c)", "a:(b,c)")]
 
     def test_comparison_of_equal_keys(self):
         for s in self.equal_keys:
@@ -101,22 +101,24 @@ class KeyPartialOrderingTestCase(unittest.TestCase):
 
 
 unittest.skip("Incomplete/needs updating")
+
+
 class KeyFormPartialOrderingTestCase(unittest.TestCase):
-    
+
     def setUp(self):
         self.ordered_pairs = [
             (("a", (2,)), ("a:b", (1,))),
-            #(("a", (1,)), ("a:(b,c)", (1, 2))), # Think about this one
-            #(("a:b", (0,)), ("a:(b,c)", (0, 2)))
-            ]
+            # (("a", (1,)), ("a:(b,c)", (1, 2))), # Think about this one
+            # (("a:b", (0,)), ("a:(b,c)", (0, 2)))
+        ]
         self.unordered_pairs = [
             (("a", (2,)), ("a:b", (0,))),
             (("a", (2,)), ("b:c", (1,))),
-            #(("a", (5,)), ("a:(b,c)", (1, 2))),
-            #(("a", (2,)), ("b:(c,d)", (1, 2))),
-            #(("a:b", (3,)), ("a:(b,c)", (0, 2))),
-            #(("a:b", (0,)), ("a:(c,d)", (0, 2)))
-            ] 
+            # (("a", (5,)), ("a:(b,c)", (1, 2))),
+            # (("a", (2,)), ("b:(c,d)", (1, 2))),
+            # (("a:b", (3,)), ("a:(b,c)", (0, 2))),
+            # (("a:b", (0,)), ("a:(c,d)", (0, 2)))
+        ]
 
     def test_comparison_of_in_order_keyforms(self):
         for (s1, h1), (s2, h2) in self.ordered_pairs:
@@ -137,12 +139,14 @@ class KeyFormPartialOrderingTestCase(unittest.TestCase):
                 self.assertFalse(kf1 <= kf2)
                 self.assertFalse(kf2 <= kf1)
 
+
 class KeyFormFromKeyTestCase(unittest.TestCase):
 
-   def test(self):
-    x = KeyForm(Key("(a,b):(c,)"), (1, 0))
-    y = KeyForm.from_key(Key("(a,b):(c,?)"))
-    self.assertEqual(x, y)
+    def test(self):
+        x = KeyForm(Key("(a,b):(c,)"), (1, 0))
+        y = KeyForm.from_key(Key("(a,b):(c,?)"))
+        self.assertEqual(x, y)
+
 
 @unittest.skip("Not Implemented")
 class KeyManipulationTestCase(unittest.TestCase):
@@ -162,7 +166,7 @@ class KeyManipulationTestCase(unittest.TestCase):
 
 @unittest.skip("Not Implemented")
 class KeyFormTestCase(unittest.TestCase):
-    
+
     def test_keyform_partial_order_comparison(self):
         ...
 
@@ -171,6 +175,7 @@ class KeyFormTestCase(unittest.TestCase):
 
     def test_keyform_error_on_invalid_key_reduction(self):
         ...
+
 
 if __name__ == "__main__":
     unittest.main()

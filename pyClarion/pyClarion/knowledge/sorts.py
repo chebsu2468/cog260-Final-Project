@@ -5,7 +5,7 @@ from .terms import Var, Bus, Atom, Compound, Chunk, Rule
 
 
 class Fundaments[C: Bus | Atom](Sort[C]):
-    """A data sort for atomic terms.""" 
+    """A data sort for atomic terms."""
     _vars_: dict[str, Var]
 
     def __init__(self, name: str = "", prefix: str = "") -> None:
@@ -30,10 +30,11 @@ class Atoms(Fundaments[Atom]):
     """
     A data sort for data atoms.
 
-    Represents a collection of atomic data terms that are alike in content 
+    Represents a collection of atomic data terms that are alike in content
     (e.g., color terms, shape terms, etc.).
     """
     _mtype_ = Atom
+
     def __init__(self, name: str = "", prefix: str = "atom"):
         super().__init__(name, prefix)
 
@@ -41,6 +42,7 @@ class Atoms(Fundaments[Atom]):
 class Buses(Fundaments[Bus]):
     """A data sort for data lines."""
     _mtype_ = Bus
+
     def __init__(self, name: str = "", prefix: str = "atom"):
         super().__init__(name, prefix)
 
@@ -54,7 +56,7 @@ class Chunks(Compounds[Chunk]):
     """
     A data sort for chunk terms.
 
-    Represents a collection of chunk terms. This sort includes a `nil` term as 
+    Represents a collection of chunk terms. This sort includes a `nil` term as
     a necessary member.
     """
     _mtype_ = Chunk
@@ -68,11 +70,11 @@ class Rules(Compounds[Rule]):
     """
     A data sort for rule terms.
 
-    Represents a collection of rule terms. This sort includes a `nil` term as a 
+    Represents a collection of rule terms. This sort includes a `nil` term as a
     necessary member.
     """
     _mtype_ = Rule
-    nil: Rule 
+    nil: Rule
 
     def __init__(self, name: str = "", prefix: str = "rule"):
         super().__init__(name, prefix)

@@ -14,7 +14,7 @@ type DVPairs = tuple[StructuralKeySpace, SemanticSubspace]
 type Nodes = DVPairs | Chunks | Rules
 
 __all__ = [
-    "Symbol", "Term", "Sort", "Var", "Family", "Root", 
+    "Symbol", "Term", "Sort", "Var", "Family", "Root",
     "Bus", "Atom", "Compound", "Chunk", "Rule",
     "Buses", "Atoms", "Compounds", "Chunks", "Rules",
     "DataFamily", "AtomFamily", "ChunkFamily", "RuleFamily", "BusFamily",

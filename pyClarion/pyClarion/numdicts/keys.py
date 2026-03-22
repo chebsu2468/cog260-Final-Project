@@ -13,19 +13,19 @@ def sig_cache[T: Callable](f: T) -> T:
 
 class Key(tuple[tuple[str, int], ...]):
     __slots__ = ()
-    
+
     @sig_cache
     def __new__(cls: Type[Self], s: Self | str = "") -> Self:
         if isinstance(s, cls):
             return s
         if not isinstance(s, str):
             raise TypeError(f"Expected str or {cls.__name__}, got "
-                f"{type(s).__name__} instead""")
+                            f"{type(s).__name__} instead""")
         if any(c.isspace() for c in s):
             raise ValidationError("No spaces allowed")
         if s == "":
             return super().__new__(cls, (("", 0),))
-        template = "{}" 
+        template = "{}"
         atomic, compound = r"[^(),]+", r"[^(),]+(?:,[^(),]+)+"
         outer = fr"((?:)|(?:{atomic})|(?:\({compound}\)))"
         pat_o = re.compile(template.format(outer))
@@ -47,7 +47,7 @@ class Key(tuple[tuple[str, int], ...]):
                 res.append(p)
                 new_cur.extend([[child, 0] for child in children])
                 new_template.append(
-                    r"" if not children else 
+                    r"" if not children else
                     r"{}" if len(children) == 1 else
                     r"\({}\)".format(','.join(["{}"] * len(children))))
             template = template.format(*new_template)
@@ -56,7 +56,7 @@ class Key(tuple[tuple[str, int], ...]):
         else:
             res.extend(cur)
         return super().__new__(cls, [(label, degree) for label, degree in res])
-    
+
     def __str__(self) -> str:
         S, cur, nxt, fmt, lvs, res = 0, "{}", [], [], [], []
         for i, (label, degree) in enumerate(self):
@@ -64,20 +64,20 @@ class Key(tuple[tuple[str, int], ...]):
                 lvs.append(S + 1)
             S += degree
             nxt.append(
-                "" if degree == 0 else 
-                "{}" if degree == 1 else 
+                "" if degree == 0 else
+                "{}" if degree == 1 else
                 f"({','.join(["{}" for _ in range(degree)])})")
             fmt.append(label)
             if i + 1 in lvs:
                 res.append(cur.format(*fmt))
-                cur = cur.format(*nxt)      
-                nxt.clear() 
+                cur = cur.format(*nxt)
+                nxt.clear()
                 fmt.clear()
         return ":".join(res[1:])
 
     def __repr__(self) -> str:
         return f"Key({repr(str(self))})"
-    
+
     def __bool__(self) -> bool:
         return self != Key()
 
@@ -121,9 +121,9 @@ class Key(tuple[tuple[str, int], ...]):
 
     @sig_cache
     def find_in(
-        self: Self, 
-        other: "Key", 
-        crit: Callable[[str, str], bool] = str.__eq__
+            self: Self,
+            other: "Key",
+            crit: Callable[[str, str], bool] = str.__eq__
     ) -> Sequence[tuple[int, ...]]:
         N_s, N_o = len(self), len(other)
         if N_o < N_s:
@@ -135,7 +135,7 @@ class Key(tuple[tuple[str, int], ...]):
             new_matches = []
             for i_o in range(N_o - N_s + i_s, i_s - 1, -1):
                 (l_s, d_s), (l_o, d_o) = self[i_s], other[i_o]
-                if not crit(l_s, l_o): 
+                if not crit(l_s, l_o):
                     continue
                 if i_s == N_s - 1:
                     new_matches.append({i_s: i_o})
@@ -207,7 +207,7 @@ class Key(tuple[tuple[str, int], ...]):
             result.append(node)
             S += degree
         return super().__new__(type(self), result)
-    
+
     @sig_cache
     def split(self) -> Sequence["Key"]:
         cutpoint, deg = len(self), 0
@@ -249,7 +249,7 @@ class KeyForm:
                 raise ValueError("Height vector too short") from e
         if 0 < len(h):
             raise ValueError("Height vector too long")
-            
+
     def __contains__(self, obj) -> bool:
         if not isinstance(obj, Key):
             return NotImplemented
@@ -257,7 +257,7 @@ class KeyForm:
         if len(obj) != len(ref):
             return False
         return bool(ref.find_in(obj, crit=self._crit))
-    
+
     def __eq__(self, other) -> bool:
         if not isinstance(other, KeyForm):
             return NotImplemented
@@ -269,56 +269,63 @@ class KeyForm:
     def __le__(self, other) -> bool:
         if not isinstance(other, KeyForm):
             return NotImplemented
-        k1 = self.as_key(); k2 = other.as_key()
+        k1 = self.as_key();
+        k2 = other.as_key()
         return bool(k1.find_in(k2, crit=self._crit))
-    
+
     def __mul__(self: Self, other: Self) -> "KeyForm":
         return KeyForm.from_key(self.as_key() * other.as_key())
-        
+
     def reductor(self, other: "KeyForm") -> Callable[[Key], Key]:
-        k1 = self.as_key(); k2 = other.as_key()
+        k1 = self.as_key();
+        k2 = other.as_key()
         if not self <= other:
             raise ValueError(f"Keyform {k1} cannot match keys from {k2}")
         matches = k1.find_in(k2, crit=self._crit)
         if 1 < len(matches):
             raise ValueError(f"Keyform {k1} has multiple matches to {k2}")
         indices, = matches
-        agg = set(); S = 1
+        agg = set();
+        S = 1
         for i, (label, deg) in enumerate(k1):
             if label == "*" or i in agg:
                 agg.add(i)
                 agg.update((S + j for j in range(deg)))
             S += deg
-        cuts = []; S = 1
+        cuts = [];
+        S = 1
         for i, (_, deg) in enumerate(k2):
-            m = tuple(j for j in range(deg) 
-                if S + j not in indices or S + j in agg)
+            m = tuple(j for j in range(deg)
+                      if S + j not in indices or S + j in agg)
             if m:
                 cuts.append((i, m))
-            S += deg 
+            S += deg
+
         def reduce(key: Key) -> Key:
             for i, m in reversed(cuts):
                 key, _ = key.cut(i, m)
             return key
+
         return reduce
 
     @sig_cache
     def as_key(self) -> Key:
-        k = self.k; it = reversed(self.h)
+        k = self.k;
+        it = reversed(self.h)
         for i in range(len(k) - 1, -1, -1):
             if k[i][1] == 0:
                 k = k.link(Key(":".join(["?"] * next(it))), i)
         return k
-    
+
     @property
     @sig_cache
     def agg(self: Self) -> Self:
         k = self.k
-        seq = [(label, deg) if i == 0 else ("*", deg) 
-            for i, (label, deg) in enumerate(k)]
-        k_new = tuple.__new__(type(k), seq)        
+        seq = [(label, deg) if i == 0 else ("*", deg)
+               for i, (label, deg) in enumerate(k)]
+        k_new = tuple.__new__(type(k), seq)
         return type(self)(k_new, self.h)
-    
+
     @property
     @sig_cache
     def strip(self: Self) -> Self:
@@ -332,10 +339,10 @@ class KeyForm:
         for i, (label, deg) in enumerate(key):
             children = [key[S + j] for j in range(deg)]
             dot_sep_id = all(s.isidentifier() for s in label.split(".")) \
-                or label == "*" or label == ""
+                         or label == "*" or label == ""
             if not (i == 0 or dot_sep_id or label == "?"):
                 raise ValidationError(f"Unexpected label {repr(label)} in key, "
-                    "label must be a valid python identifier or '?'.")
+                                      "label must be a valid python identifier or '?'.")
             elif dot_sep_id and deg == 0:
                 leaves.append(i)
                 indices[i] = i
@@ -343,7 +350,7 @@ class KeyForm:
             elif dot_sep_id and any(lb == "?" for lb, _ in children):
                 if label == "":
                     raise ValidationError("Wildcard '?' cannot appear directly "
-                        "under root node.")
+                                          "under root node.")
                 if 1 < len(children):
                     raise ValidationError("Wildcard '?' cannot have siblings")
                 leaves.append(i)
@@ -354,10 +361,10 @@ class KeyForm:
             elif label == "?":
                 if 1 < len(children):
                     raise ValidationError("Wildcard '?' can have at most one "
-                        "child node")
+                                          "child node")
                 if any(lb != "?" for lb, _ in children):
                     raise ValueError("Children of wildcard nodes must also be "
-                        "wildcard nodes.")
+                                     "wildcard nodes.")
                 hs[indices[i]] += 1
                 for j in range(deg):
                     indices[S + j] = indices[i]
@@ -367,7 +374,7 @@ class KeyForm:
             ref, _ = ref.cut(i)
         return cls(ref, tuple(hs[indices[i]] for i in leaves))
 
-    @staticmethod    
+    @staticmethod
     def _crit(__1: str, __2: str) -> bool:
         if __1 == "?" or __1 == "*":
             return True

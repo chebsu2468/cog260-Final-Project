@@ -4,6 +4,8 @@ from datetime import timedelta
 from pyClarion import Agent
 from pyClarion.knowledge import Family, Atoms, Atom
 from pyClarion.components.io import Input
+
+
 # from pyClarion.components.stores import ChunkStore, RuleStore
 # from pyClarion.components.rules import FixedRules
 
@@ -21,7 +23,7 @@ from pyClarion.components.io import Input
 #         class IO(Atoms):
 #             ipt: Atom
 #             opt: Atom
-        
+
 #         s = Family()
 #         color = Color()
 #         shape = Shape()
@@ -35,7 +37,7 @@ from pyClarion.components.io import Input
 #             input = Input("input", (root.s, root.s))
 #             store = ChunkStore("store", root.s, root.s, root.s)
 #             store.bu.input = input.main
-        
+
 #         store.compile(
 #             "blue_triangle" ^
 #             + io.ipt ** color.blu
@@ -44,7 +46,7 @@ from pyClarion.components.io import Input
 #             "red_triangle" ^
 #             + io.ipt ** color.red
 #             + io.ipt ** shape.tria,
-            
+
 #             "green_square" ^
 #             + io.ipt ** color.grn
 #             + io.ipt ** shape.squr)
@@ -54,7 +56,7 @@ from pyClarion.components.io import Input
 #             + io.ipt ** shape.tria)
 
 #         while agent.system.queue:
-#             agent.system.advance()        
+#             agent.system.advance()
 #         ...
 
 
@@ -75,7 +77,7 @@ from pyClarion.components.io import Input
 
 #         s = Family()
 #         io = IO()
-#         heading = Heading() 
+#         heading = Heading()
 #         s.io = io; s.heading = heading
 
 #         rules = [
@@ -88,7 +90,7 @@ from pyClarion.components.io import Input
 #             + io.food ** heading("H")
 #             >>
 #             + io.move ** heading("H")]
-        
+
 #         with Agent("agent") as agent:
 #             root = agent.system.root; root.s = s
 #             input = Input("input", (root.s, root.s))
@@ -120,7 +122,7 @@ from pyClarion.components.io import Input
 
 #         s = Family()
 #         io = IO()
-#         heading = Heading() 
+#         heading = Heading()
 #         s.io = io; s.heading = heading
 
 #         rules = [
@@ -133,7 +135,7 @@ from pyClarion.components.io import Input
 #             + io.food ** heading("H")
 #             >>
 #             + io.move ** heading("H")]
-        
+
 #         with Agent("agent") as agent:
 #             root = agent.system.root; root.s = s; root.p = Family()
 #             input = Input("input", (root.s, root.s))

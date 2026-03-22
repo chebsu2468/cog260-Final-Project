@@ -22,7 +22,7 @@ class StateUpdate(Update[State]):
             raise ValueError("Index of data numdict does not match site")
         if isinstance(data, NumDict) and data.c != state.const:
             raise ValueError(f"Default constant {data.c} of data does not "
-                f"match site {state.const}")
+                             f"match site {state.const}")
         if isinstance(data, NumDict):
             self.data = data.d
 
@@ -53,16 +53,20 @@ class StateUpdate(Update[State]):
 
 class ForwardUpdate(StateUpdate):
     __slots__ = ()
+
     def __post_init__(self) -> None:
         super().__post_init__()
+
     def _get_channel(self) -> deque[NumDict]:
         return self.state.data
 
 
 class BackwardUpdate(StateUpdate):
     __slots__ = ()
+
     def __post_init__(self) -> None:
         super().__post_init__()
+
     def _get_channel(self) -> deque[NumDict]:
         return self.state.grad
 

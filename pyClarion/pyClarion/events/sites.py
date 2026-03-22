@@ -29,7 +29,7 @@ class State:
 
     def __getitem__(self, i: int) -> NumDict:
         return self.data[i]
-    
+
     def new(self, d: dict, c: float | None = None) -> NumDict:
         return numdict(self.index, d, self.const if c is None else c)
 
@@ -42,7 +42,7 @@ class Site:
         self._name = "_" + name
 
     def __get__(self, obj: Process, objtype: type[Process] | None = None) \
-        -> State:
+            -> State:
         return getattr(obj, self._name)
 
     def __set__(self, obj: Process, value: State) -> None:
@@ -57,9 +57,9 @@ class Site:
             raise TypeError("Process site assigned object of wrong type")
         elif any(d.d for d in old.data) or any(d.d for d in old.grad):
             raise ValueError(f"Site '{self._name}' of process {obj.name} "
-                "contains data")
+                             "contains data")
         elif old.index != value.index and not self.lax \
-            or old.index < value.index:
+                or old.index < value.index:
             raise ValueError("Incompatible index in site assignment")
         elif old.const != value.const:
             raise ValueError("Incompatible default value in site assignment")

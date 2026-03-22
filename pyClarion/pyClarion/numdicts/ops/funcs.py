@@ -19,17 +19,18 @@ def nd_iter(d: "nd.NumDict", *others: "nd.NumDict") -> Iterator[Key]:
 
 
 def collect[D: "nd.NumDict"](
-    d: D, 
-    *others: D,
-    mode: Literal["self", "match", "full"],
-    branches: Sequence[KeyForm | None] | KeyForm | None = None
+        d: D,
+        *others: D,
+        mode: Literal["self", "match", "full"],
+        branches: Sequence[KeyForm | None] | KeyForm | None = None
 ) -> Iterator[tuple[Key, list[float]]]:
     if mode not in ("self", "match", "full"):
-        raise ValueError(f"Invalid mode flag: '{mode}'")    
-    if (branches is not None and not isinstance(branches, KeyForm) 
-        and len(branches) != len(others)):
+        raise ValueError(f"Invalid mode flag: '{mode}'")
+    if (branches is not None and not isinstance(branches, KeyForm)
+            and len(branches) != len(others)):
         raise ValueError(f"len(branches) != len(others)")
-    invariant = True; reductors = []
+    invariant = True;
+    reductors = []
     for i, oth in enumerate(others):
         if oth._i.root != d._i.root:
             raise ValueError(f"Mismatched keyspaces")
@@ -38,7 +39,7 @@ def collect[D: "nd.NumDict"](
         kf = d._i.kf
         if branches is not None:
             branch = branches if isinstance(branches, KeyForm) else branches[i]
-            kf = branch if branch is not None else kf 
+            kf = branch if branch is not None else kf
         reductors.append(oth._i.kf.reductor(kf))
     match mode:
         case "self":
@@ -59,9 +60,9 @@ def collect[D: "nd.NumDict"](
 
 
 def group(
-    d: "nd.NumDict",
-    kf: KeyForm,
-    mode: Literal["self", "full"] = "full"
+        d: "nd.NumDict",
+        kf: KeyForm,
+        mode: Literal["self", "full"] = "full"
 ) -> dict[Key, list[float]]:
     if mode not in ("self", "full"):
         raise ValueError(f"Invalid mode flag: '{mode}'")
@@ -78,26 +79,26 @@ def group(
 
 
 def unary[**P, D: "nd.NumDict"](
-    d: D, 
-    kernel: Callable[Concatenate[float, P], float], 
-    *args: P.args, 
-    **kwargs: P.kwargs
+        d: D,
+        kernel: Callable[Concatenate[float, P], float],
+        *args: P.args,
+        **kwargs: P.kwargs
 ) -> D:
-    new_c = (d._c if isinstance(d._c, _Undefined) 
-        else float(kernel(d._c, *args, **kwargs)))
-    new_d = {k: float(new_v) for k, v in d._d.items() 
-        if (new_v := kernel(v, *args, **kwargs)) != new_c}
+    new_c = (d._c if isinstance(d._c, _Undefined)
+             else float(kernel(d._c, *args, **kwargs)))
+    new_d = {k: float(new_v) for k, v in d._d.items()
+             if (new_v := kernel(v, *args, **kwargs)) != new_c}
     return type(d)(d._i, new_d, new_c, False)
-    
+
 
 def binary[**P, D: "nd.NumDict"](
-    d1: D, 
-    d2: D, 
-    by: KeyForm | None, 
-    c: float | _Undefined | None,
-    kernel: Callable[Concatenate[float, float, P], float], 
-    *args: P.args, 
-    **kwargs: P.kwargs
+        d1: D,
+        d2: D,
+        by: KeyForm | None,
+        c: float | _Undefined | None,
+        kernel: Callable[Concatenate[float, float, P], float],
+        *args: P.args,
+        **kwargs: P.kwargs
 ) -> D:
     mode = "self" if isinstance(d1._c, _Undefined) else "match"
     it = collect(d1, d2, mode=mode, branches=(by,))
@@ -107,12 +108,14 @@ def binary[**P, D: "nd.NumDict"](
         new_c = Undefined
     else:
         new_c = kernel(d1._c, d2._c, *args, **kwargs)
-    new_d = {k: v for k, (v1, v2) in it 
-        if (v := kernel(v1, v2, *args, **kwargs)) != new_c}
+    new_d = {k: v for k, (v1, v2) in it
+             if (v := kernel(v1, v2, *args, **kwargs)) != new_c}
     return type(d1)(d1._i, new_d, new_c, False)
-    
 
-def variadic[D: "nd.NumDict"](d: D, *ds: D, by: KeyForm | Sequence[KeyForm | None] | None, c: float | _Undefined | None, kernel: Callable[[Sequence[float]], float], eye: float) -> D:
+
+def variadic[D: "nd.NumDict"](d: D, *ds: D, by: KeyForm | Sequence[KeyForm | None] | None,
+                              c: float | _Undefined | None,
+                              kernel: Callable[[Sequence[float]], float], eye: float) -> D:
     if isinstance(d._c, _Undefined):
         mode = "self"
     elif 0 < len(ds):
@@ -130,7 +133,7 @@ def variadic[D: "nd.NumDict"](d: D, *ds: D, by: KeyForm | Sequence[KeyForm | Non
     elif len(ds) == 0 and isinstance(by, KeyForm):
         if not by <= d._i.kf:
             raise ValueError(f"Keyform {by.as_key()} cannot "
-                f"reduce {d._i.kf.as_key()}")
+                             f"reduce {d._i.kf.as_key()}")
         assert mode != "match"
         it = group(d, by, mode=mode).items()
         i = Index(d._i.root, by)

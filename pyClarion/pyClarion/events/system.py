@@ -17,8 +17,10 @@ PROCESS: ContextVar["Process"] = ContextVar("PROCESS")
 
 class Update[I: Hashable](Protocol):
     """A future update to the simulation state."""
+
     def apply(self) -> None:
         ...
+
     @property
     def target(self) -> I:
         ...
@@ -28,10 +30,10 @@ class Update[I: Hashable](Protocol):
 class Event:
     """
     A simulation event.
-    
+
     Events are ordered first by time, then by priority, then by number.
 
-    Do not directly mutate the updates list as this will corrupt the event, use 
+    Do not directly mutate the updates list as this will corrupt the event, use
     event.append() instead.
 
     Do not mutate any event attribute if the event is marked as scheduled.
@@ -48,27 +50,27 @@ class Event:
         self._index = {}
         for ud in self.updates:
             (self._index
-                .setdefault(type(ud), dict())
-                .setdefault(ud.target, [])
-                .append(ud))
+             .setdefault(type(ud), dict())
+             .setdefault(ud.target, [])
+             .append(ud))
 
     def __repr__(self) -> str:
         if ismethod(self.source) and isinstance(self.source.__self__, Process):
             source = f"{self.source.__self__.name}.{self.source.__name__}"
         else:
-            source = self.source.__qualname__        
+            source = self.source.__qualname__
         return (f"<{self.__class__.__qualname__} "
-            f"source={source} time={repr(self.time)} "
-            f"at {hex(id(self))}>")
-    
+                f"source={source} time={repr(self.time)} "
+                f"at {hex(id(self))}>")
+
     def append(self, *updates) -> None:
         self.updates.extend(updates)
         for ud in updates:
             (self._index
-                .setdefault(type(ud), dict())
-                .setdefault(ud.target, [])
-                .append(ud))
-    
+             .setdefault(type(ud), dict())
+             .setdefault(ud.target, [])
+             .append(ud))
+
     def describe(self) -> str:
         if ismethod(self.source) and isinstance(self.source.__self__, Process):
             source = f"{self.source.__self__.name}.{self.source.__name__}"
@@ -76,15 +78,15 @@ class Event:
             source = self.source.__qualname__
         days = self.time.days
         hours = (self.time.seconds // 86400) % 24
-        minutes = (self.time.seconds // 3600) % 60 
+        minutes = (self.time.seconds // 3600) % 60
         seconds = self.time.seconds % 60
         centiseconds = int(self.time.microseconds / 10000)
         time = (f"{days:#06x} {hours:02d}:{minutes:02d}:"
-            f"{seconds:02d}.{centiseconds:02d}")
+                f"{seconds:02d}.{centiseconds:02d}")
         return f"event {time} {self.priority:03d} {self.number} {source}"
-    
+
     def index[U: Update](self, update_type: type[U]) \
-        -> dict[Hashable, list[U]]:
+            -> dict[Hashable, list[U]]:
         return cast(dict[Hashable, list[U]], self._index.get(update_type, {}))
 
     def __lt__(self, other) -> bool:
@@ -101,7 +103,7 @@ class Event:
 class Clock:
     """
     A simulation clock.
-    
+
     Tracks simulation time using datetime.timedelta() objects.
     """
     time: timedelta = timedelta()
@@ -112,7 +114,7 @@ class Clock:
     def has_time(self) -> bool:
         """
         Return True iff clock time limit has not yet been reached.
-        
+
         If self.limit == timedelta(), always returns True.
         """
         return not self.limit or self.time <= self.limit
@@ -120,8 +122,8 @@ class Clock:
     def advance(self, timepoint: timedelta) -> None:
         """
         Advance clock to given timepoint.
-        
-        Raises StopIteration if a time limit is set and timepoint is beyond it 
+
+        Raises StopIteration if a time limit is set and timepoint is beyond it
         and ValueError if timepoint precedes clock time.
         """
         if timedelta() < self.limit and self.limit < timepoint:
@@ -134,17 +136,17 @@ class Clock:
 class Process[R: KSRoot]:
     """
     A simulated process.
-    
-    Owns data sites and schedules simulation events. Maintains a handle to 
+
+    Owns data sites and schedules simulation events. Maintains a handle to
     global simulation state.
 
-    Process instances may be used in with statements for compositional model 
-    construction. 
+    Process instances may be used in with statements for compositional model
+    construction.
 
     >>> with Process("p1") as p1:
     ...     p2 = Process("p2")
     ...     assert p1.system is p2.system
-    
+
     """
 
     @dataclass(slots=True)
@@ -197,13 +199,13 @@ class Process[R: KSRoot]:
             for proc in self.procs:
                 proc.resolve(event)
             return event
-        
+
         def run_all(self) -> None:
             """
             Process all events.
-            
-            Will stop when scheduled events are exhausted or a time limit is 
-            reached, whichever comes first. For information on time limits, see 
+
+            Will stop when scheduled events are exhausted or a time limit is
+            reached, whichever comes first. For information on time limits, see
             Clock.
             """
             while self.queue and self.clock.has_time:
@@ -232,24 +234,24 @@ class Process[R: KSRoot]:
         self.system.procs.append(self)
 
     def __repr__(self) -> str:
-        return f"<{type(self).__qualname__} '{self.name}' at {hex(id(self))}>"        
+        return f"<{type(self).__qualname__} '{self.name}' at {hex(id(self))}>"
 
     def __enter__(self):
         self.__tokens.append(PROCESS.set(self))
         return self
-    
+
     def __exit__(self, exc_type, exc_value, traceback):
         PROCESS.reset(self.__tokens.pop())
 
     def resolve(self, event: Event) -> None:
         """
         Analyze an event and schedule new events as needed.
-        
+
         Typically, dispatches calls to various event scheduling methods.
         """
         pass
 
     def breakpoint(self, dt: timedelta, priority: int = 0) \
-        -> Event:
+            -> Event:
         """Schedule a dummy event at specified time."""
         return Event(self.breakpoint, [], dt, priority, 0)

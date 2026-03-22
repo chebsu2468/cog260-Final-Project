@@ -5,9 +5,9 @@ import logging
 from .base import Component, Parametric, Priority, ChunkUpdate
 from .ops import cam
 from ..numdicts import NumDict, KeyForm, keyform, ks_crawl, Undefined
-from ..knowledge import (Family, Buses, Atoms, Chunks, Chunk, Bus, Atom, 
-    DVPairs, ChunkFamily, DataFamily)
-from ..events import Event, State, Site, ForwardUpdate 
+from ..knowledge import (Family, Buses, Atoms, Chunks, Chunk, Bus, Atom,
+                         DVPairs, ChunkFamily, DataFamily)
+from ..events import Event, State, Site, ForwardUpdate
 from ..numdicts.ops.base import Unary, Aggregator
 
 
@@ -29,14 +29,14 @@ class BottomUp[D: DVPairs](Component):
     pre: Unary[NumDict] | None
     post: Unary[NumDict] | None
 
-    def __init__(self, 
-        name: str, 
-        c: Chunks, 
-        d: D, 
-        *,
-        pre: Unary | None = None,
-        post: Unary | None = None
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 c: Chunks,
+                 d: D,
+                 *,
+                 pre: Unary | None = None,
+                 post: Unary | None = None
+                 ) -> None:
         super().__init__(name)
         b, v = d
         self.system.check_root(c, b, v)
@@ -58,23 +58,23 @@ class BottomUp[D: DVPairs](Component):
         if self.input in event.index(ForwardUpdate):
             self.system.schedule(self.forward())
 
-    def forward(self, 
-        dt: timedelta = timedelta(), 
-        priority: int = Priority.PROPAGATION
-    ) -> Event:
+    def forward(self,
+                dt: timedelta = timedelta(),
+                priority: int = Priority.PROPAGATION
+                ) -> Event:
         input = self.input[0]
         if self.pre is not None:
             input = self.pre(input)
         main = (self.weights[0]
-            .mul(input, by=self.mul_by)
-            .max(by=self.max_by)
-            .sum(by=self.sum_by, c=0.0))
+                .mul(input, by=self.mul_by)
+                .max(by=self.max_by)
+                .sum(by=self.sum_by, c=0.0))
         if self.post is not None:
             main = self.post(main)
         return Event(self.forward, [ForwardUpdate(self.main, main)], dt, priority)
-    
 
-class TopDown[D: DVPairs](Component):    
+
+class TopDown[D: DVPairs](Component):
     """
     A top-down activation process.
 
@@ -92,15 +92,15 @@ class TopDown[D: DVPairs](Component):
     post: Unary[NumDict] | None
     agg: Aggregator[NumDict]
 
-    def __init__(self, 
-        name: str, 
-        c: Chunks, 
-        d: D,
-        *,
-        pre: Unary[NumDict] | None = None,
-        post: Unary[NumDict] | None = None,
-        agg: Aggregator[NumDict] = NumDict.sum
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 c: Chunks,
+                 d: D,
+                 *,
+                 pre: Unary[NumDict] | None = None,
+                 post: Unary[NumDict] | None = None,
+                 agg: Aggregator[NumDict] = NumDict.sum
+                 ) -> None:
         super().__init__(name)
         b, v = d
         self.system.check_root(c, b, v)
@@ -111,21 +111,21 @@ class TopDown[D: DVPairs](Component):
         self.d = d
         self.main = State(idx_b * idx_v, {}, c=0.0)
         self.input = State(idx_c, {}, c=0.0)
-        self.weights = State(idx_c * idx_b * idx_v, {}, c=0.0) 
+        self.weights = State(idx_c * idx_b * idx_v, {}, c=0.0)
         self.mul_by = keyform(c) * keyform(b).agg * keyform(v).agg
         self.agg_by = keyform(c).agg * keyform(b) * keyform(v)
         self.pre = pre
         self.post = post
-        self.agg = agg         
+        self.agg = agg
 
     def resolve(self, event: Event) -> None:
         if self.input in event.index(ForwardUpdate):
             self.system.schedule(self.forward())
 
-    def forward(self, 
-        dt: timedelta = timedelta(), 
-        priority: int = Priority.PROPAGATION
-    ) -> Event:
+    def forward(self,
+                dt: timedelta = timedelta(),
+                priority: int = Priority.PROPAGATION
+                ) -> Event:
         input = self.input[0]
         if self.pre is not None:
             input = self.pre(input)
@@ -138,9 +138,9 @@ class TopDown[D: DVPairs](Component):
 
 class ChunkStore[D: DVPairs](Component):
     """
-    A chunk store. 
+    A chunk store.
 
-    Maintains a collection of chunks and facilitates top-down and bottom-up 
+    Maintains a collection of chunks and facilitates top-down and bottom-up
     activation propagation.
     """
 
@@ -152,15 +152,16 @@ class ChunkStore[D: DVPairs](Component):
     sum_by: KeyForm
     max_by: KeyForm
 
-    def __init__(self, 
-        name: str, 
-        c: DataFamily | ChunkFamily, 
-        d: D
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 c: DataFamily | ChunkFamily,
+                 d: D
+                 ) -> None:
         super().__init__(name)
         b, v = d
         self.system.check_root(c, b, v)
-        self.c = Chunks(); c[name] = self.c
+        self.c = Chunks();
+        c[name] = self.c
         self.d = d
         idx_c = self.system.get_index(keyform(self.c))
         idx_b = self.system.get_index(keyform(b))
@@ -173,17 +174,17 @@ class ChunkStore[D: DVPairs](Component):
 
     def norm(self, d: NumDict) -> NumDict:
         return (d
-            .pow(2)
-            .max(by=self.max_by)
-            .sum(by=self.sum_by)
-            .shift(1.0))
+                .pow(2)
+                .max(by=self.max_by)
+                .sum(by=self.sum_by)
+                .shift(1.0))
 
     def resolve(self, event: Event) -> None:
         updates = event.index(ChunkUpdate).get(self.c, [])
         new_chunks = [chunk for ud in updates for chunk in ud.add]
         if new_chunks:
             if event.source == self.encode \
-                and self.system.logger.isEnabledFor(logging.DEBUG):
+                    and self.system.logger.isEnabledFor(logging.DEBUG):
                 self.log_encoding(new_chunks)
             self.system.schedule(self.encode_weights(*new_chunks))
 
@@ -192,12 +193,12 @@ class ChunkStore[D: DVPairs](Component):
         for c in chunks:
             data.append(str(c).replace("\n", "\n    "))
         self.system.logger.debug("\n    ".join(data))
-        
-    def encode(self, 
-        *chunks: Chunk, 
-        dt: timedelta = timedelta(), 
-        priority=Priority.LEARNING
-    ) -> Event:
+
+    def encode(self,
+               *chunks: Chunk,
+               dt: timedelta = timedelta(),
+               priority=Priority.LEARNING
+               ) -> Event:
         """Encode a collection of new chunks."""
         new = []
         for chunk in chunks:
@@ -205,7 +206,7 @@ class ChunkStore[D: DVPairs](Component):
                 new.append(chunk)
             elif chunk not in self.system.root:
                 raise ValueError(f"The following chunk belongs to a "
-                    f"different system:\n {chunk}")
+                                 f"different system:\n {chunk}")
         for chunk in new:
             name = next(self.c._namer_)
             if not hasattr(chunk, "_name_"):
@@ -213,14 +214,14 @@ class ChunkStore[D: DVPairs](Component):
             instances = list(chunk._instantiations_())
             chunk._instances_.update(instances)
             new.extend(instances)
-        return Event(self.encode, 
-            [ChunkUpdate(self.c, add=tuple(new))], 
-            dt, priority)
-        
-    def encode_weights(self, *chunks: Chunk, 
-        dt: timedelta = timedelta(), 
-        priority=Priority.LEARNING
-    ) -> Event:
+        return Event(self.encode,
+                     [ChunkUpdate(self.c, add=tuple(new))],
+                     dt, priority)
+
+    def encode_weights(self, *chunks: Chunk,
+                       dt: timedelta = timedelta(),
+                       priority=Priority.LEARNING
+                       ) -> Event:
         ciw, tdw = {}, {}
         for chunk in chunks:
             data = chunk._compile_()
@@ -229,28 +230,28 @@ class ChunkStore[D: DVPairs](Component):
         buw = self.buw.new(tdw)
         buw = buw.div(self.norm(buw))
         return Event(self.encode_weights,
-            [ForwardUpdate(self.ciw, ciw, "write"),
-             ForwardUpdate(self.tdw, tdw, "write"),
-             ForwardUpdate(self.buw, buw, "write")],
-            dt, priority)
-    
-    def bottom_up(self, 
-        name: str, 
-        *, 
-        pre: Unary | None = None, 
-        post: Unary | None = None
-    ) -> BottomUp[D]:
+                     [ForwardUpdate(self.ciw, ciw, "write"),
+                      ForwardUpdate(self.tdw, tdw, "write"),
+                      ForwardUpdate(self.buw, buw, "write")],
+                     dt, priority)
+
+    def bottom_up(self,
+                  name: str,
+                  *,
+                  pre: Unary | None = None,
+                  post: Unary | None = None
+                  ) -> BottomUp[D]:
         with self:
             obj = BottomUp(name, self.c, self.d, pre=pre, post=post)
         obj.weights = self.buw
         return obj
 
-    def top_down(self, 
-        name: str, 
-        *, 
-        pre: Unary | None = None, 
-        post: Unary | None = None
-    ) -> TopDown[D]:
+    def top_down(self,
+                 name: str,
+                 *,
+                 pre: Unary | None = None,
+                 post: Unary | None = None
+                 ) -> TopDown[D]:
         with self:
             obj = TopDown(name, self.c, self.d, pre=pre, post=post)
         obj.weights = self.tdw
@@ -270,16 +271,16 @@ class ChunkExtractor[D: DVPairs](Parametric, Component):
     params: Site = Site()
     auto: bool
 
-    def __init__(self, 
-        name: str, 
-        p: Family, 
-        c: Chunks,
-        d: D,
-        *, 
-        auto: bool = True,
-        th: float = 1.0, 
-        tol: float = 1e-6
-    ) -> None:
+    def __init__(self,
+                 name: str,
+                 p: Family,
+                 c: Chunks,
+                 d: D,
+                 *,
+                 auto: bool = True,
+                 th: float = 1.0,
+                 tol: float = 1e-6
+                 ) -> None:
         super().__init__(name)
         b, v = d
         self.system.check_root(p, c, b, v)
@@ -307,10 +308,10 @@ class ChunkExtractor[D: DVPairs](Parametric, Component):
         if self.auto and self.input_t in event.index(ForwardUpdate):
             self.system.schedule(self.update())
 
-    def update(self, 
-        dt: timedelta = timedelta(), 
-        priority: Priority = Priority.LEARNING
-    ) -> Event:        
+    def update(self,
+               dt: timedelta = timedelta(),
+               priority: Priority = Priority.LEARNING
+               ) -> Event:
         pos = self.input_b[0].isbetween(lb=self.params[0][~self.p.th])
         neg = self.input_b[0].isbetween(ub=-self.params[0][~self.p.th])
         pos_sum = pos.sum().c
@@ -318,24 +319,24 @@ class ChunkExtractor[D: DVPairs](Parametric, Component):
         assert isinstance(pos_sum, float) and isinstance(neg_sum, float)
         target = (s := pos_sum + neg_sum) / (1 + s)
         crit = (self.input_t[0]
-            .shift(-(target - self.params[0][~self.p.tol]))
-            .isbetween(lb=0.0)
-            .valmax())
+                .shift(-(target - self.params[0][~self.p.tol]))
+                .isbetween(lb=0.0)
+                .valmax())
         if 0 < crit:
             return Event(self.update, [], dt, priority)
-        chunk = self.extract_chunk(pos.sub(neg)) 
-        return Event(self.update, 
-            [ChunkUpdate(self.c, add=(chunk,))], 
-            dt, priority)
-    
+        chunk = self.extract_chunk(pos.sub(neg))
+        return Event(self.update,
+                     [ChunkUpdate(self.c, add=(chunk,))],
+                     dt, priority)
+
     def extract_chunk(self, d: NumDict) -> Chunk:
         if d.i != self.input_b.index:
             raise ValueError("Unexpected index")
         chunk = Chunk({})
         for k, w in d.d.items():
             _d, _v = k.split()
-            dim = ks_crawl(self.system.root, _d) 
+            dim = ks_crawl(self.system.root, _d)
             val = ks_crawl(self.system.root, _v)
             assert isinstance(dim, Bus) and isinstance(val, Atom | Chunk)
-            chunk += w * dim ** val 
+            chunk += w * dim ** val
         return chunk
