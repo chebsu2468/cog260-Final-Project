@@ -195,5 +195,4 @@ if __name__ == "__main__":
 
     with model.asn.bias[0].mutable() as d:
         d[~model.cs.c.nil] = 1
-
     stimuli = [red, green, blue]
