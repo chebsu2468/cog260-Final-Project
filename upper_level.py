@@ -3,12 +3,14 @@ from pyClarion import (
     Agent,  # Base class for defining pyClarion agents
     ChunkStore,  # A process that maintains chunk data
     Input,
-    Pool,  # A process that combines activations from different sources, with
+    Pool,
+    Layer,# A process that combines activations from different sources, with
     #    optional source weighting via parameters.
     TopDown,  # A process that computes top-down activations
     Choice,
     # A process that implements a Thurstonian choice model (Case V)
 )
+
 from pyClarion import (
     NumDict,  # Numerical dictionary class. This is how pyClarion does math.
     Event,  # Represents simulation events.
@@ -83,33 +85,41 @@ class Model(Agent):
                 d=self.cs.c,
                 sd=sd,
                 f=f)
+            self.asn = Layer(
+                f"{name}.asn",
+                i=self.cs.c,
+                o=self.cs.c)
 
-            with self:
+            self.ipt >> self.pool_i
 
-                # Input → pool_i
-                self.pool_i = self.ipt >> self.pool_i
+            self.pool_i >> self.td
 
-                self.td = self.pool_i >> self.td
+            self.pool_i >> self.asn
 
-                self.out = self.td >> self.out
+            (self.asn, self.td) >> self.pool_o
 
-        def resolve(self, event: Event) -> None:
+            (self.ipt, self.pool_o) >> self.pool_i
 
-            # Start of cycle
-            if event.source == self.begin_cycle:
-                self.system.schedule(self.pool_i.forward())
+            self.pool_i >> self.asn
 
-            # After pool_i finishes → wait
-            elif event.source == self.pool_i.forward:
-                self.system.schedule(self.wait())
+            (self.asn, self.td) >> self.pool_o
 
-            # After waiting → propagate to output
-            elif event.source == self.wait:
-                self.system.schedule(self.pool_o.forward())
+            self.pool_o >> self.out
 
-            # End of cycle
-            elif event.source == self.pool_o.forward:
-                self.system.schedule(self.end_cycle())
+    def resolve(self, event: Event) -> None:
+
+        # Start of cycle
+        if event.source == self.begin_cycle:
+            self.system.schedule(self.pool_i.forward())
+        # After pool_i finishes → wait
+        elif event.source == self.pool_i.forward:
+            self.system.schedule(self.wait())
+        # After waiting → propagate to output
+        elif event.source == self.wait:
+            self.system.schedule(self.pool_o.forward())
+        # End of cycle
+        elif event.source == self.pool_o.forward:
+            self.system.schedule(self.end_cycle())
 
     def wait(self,
              dt: timedelta = timedelta(milliseconds=50),
@@ -155,14 +165,17 @@ def init_chunks(root: ModelKeyspace[ModelData]) -> list[Chunk]:
     return [
 
         red := "red" ^
-                Chunk({"red"
-                       }),  # Replace this with features
+                Chunk({
+                       })
+               + b.main.wm ** d.red.y,  # Replace this with features
         green := "green" ^
-                   Chunk({"green"
-                          }),  # Replace this with features
+                   Chunk({
+                          })
+                 + b.main.wm ** d.green.y,  # Replace this with features
         blue := "blue" ^
-                 Chunk({"blue"
-                        }),
+                 Chunk({
+                        })
+                + b.main.wm ** d.red.y,
         "red" ^
         + red
         + b.main.wm ** d.red.y
@@ -192,7 +205,37 @@ if __name__ == "__main__":
         d[~green * ~green] = 1
         d[~blue * ~blue] = 1
 
-
     with model.asn.bias[0].mutable() as d:
         d[~model.cs.c.nil] = 1
     stimuli = [red, green, blue]
+
+    cycle_1i = {model.ipt.name: 1.0, model.pool_o.name: 0.0}
+    cycle_1o = {model.bu.name: 1.0, model.asn.name: 0.0}
+    cycle_2i = {model.ipt.name: 0.0, model.pool_o.name: 1.0}
+    cycle_2o = {model.bu.name: 0.0, model.asn.name: 1.0}
+
+    for stim in stimuli:
+        print("Stimulus: ", ~stim)
+        model.system.schedule(model.pool_i.set_params(**cycle_1i))
+        model.system.schedule(model.pool_o.set_params(**cycle_1o))
+        model.system.schedule(model.ipt.send({~stim: 1.0}))
+        while model.system.queue:
+            event = model.system.advance()
+            if event.source == model.ipt.send:
+                print(event.describe())
+                model.system.schedule(model.begin_cycle())
+            elif event.source == model.end_cycle:
+                print("Similarities:")
+                print(model.pool_o.main[0])
+        model.system.schedule(model.pool_i.set_params(**cycle_2i))
+        model.system.schedule(model.pool_o.set_params(**cycle_2o))
+        model.system.schedule(model.begin_cycle())
+        while model.system.queue:
+            event = model.system.advance()
+            if event.source == model.end_cycle:
+                print("Category Activations:")
+                print(model.pool_o.main[0])
+                model.system.schedule(model.out.trigger())
+            elif event.source == model.out.select:
+                print(event.describe())
+                print("Response: ", model.out.poll()[~model.cs.c])
