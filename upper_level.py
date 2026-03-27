@@ -4,6 +4,7 @@ from pyClarion.pyClarion import (
     ChunkStore,  # A process that maintains chunk data
     Input,
     Pool,
+    BottomUp,
     # A process that combines activations from different sources, with
     #    optional source weighting via parameters.
     TopDown,  # A process that computes top-down activations
@@ -20,8 +21,10 @@ from pyClarion.pyClarion import (
     Priority  # Events have priority values to help specify what happens when
 )
 from pyClarion.pyClarion.knowledge import (Root, ChunkFamily, DataFamily,
-                                           AtomFamily, BusFamily, Atoms, Atom, Buses, Bus, ChunkFamily,
+                                           AtomFamily, BusFamily, Atoms, Atom, Buses, Bus,
+                                           ChunkFamily,
                                            RuleFamily)
+
 
 class MainBuses(Buses):
     wm: Bus
@@ -41,57 +44,64 @@ class ModelKeyspace[D: DataFamily](Root):
         super().__init__()
         self.d = self["d"] = data_type()
 
+
 class Model(Agent):
     cs: ChunkStore
     ipt: Input
     pool_i: Pool
     td: TopDown
+    bu: BottomUp
+    asn: Layer
     pool_o: Pool
     out: Choice
 
-    def __init__(self, name: str, root: ModelKeyspace, sd: int, f=1) -> None:
+    def __init__(self, name: str, root: ModelKeyspace, sd: float = 1, f: float = 1) -> None:
         super().__init__(name, root)
         ks = root
         name = self.name
 
         with self:
-            self.cs = ChunkStore(
-                f"{name}.cs",
-                ks.c,
-                (ks.b.main, ks.d))
+            ks = root
+            name = self.name
 
-            self.td = self.cs.top_down(f"{name}.td")
-            self.bu = self.cs.bottom_up(f"{name}.bu")
+            with self:
+                self.cs = ChunkStore(
+                    f"{name}.cs",
+                    ks.c,
+                    (ks.b.main, ks.d))
 
-            self.ipt = Input(
-                f"{name}.ipt",
-                self.cs.c)
+                self.td = self.cs.top_down(f"{name}.td")
 
-            self.pool_o = Pool(
-                name=f"{name}.pool_o",
-                p=ks.p,
-                d=self.cs.c,
-                agg = NumDict.sum
-            )
+                self.bu = self.cs.bottom_up(f"{name}.bu")
 
-            self.pool_i = Pool(
-                name=f"{name}.pool_i",
-                p=ks.p,
-                d=self.cs.c,
-                agg = NumDict.sum
-            )
+                self.ipt = Input(
+                    f"{name}.ipt",
+                    self.cs.c)
 
-            self.out = Choice(
-                f"{name}.out",
-                p=ks.p,
-                s=ks.d,
-                d=self.cs.c,
-                sd=sd,
-                f=f)
-            self.asn = Layer(
-                f"{name}.asn",
-                i=self.cs.c,
-                o=self.cs.c)
+                self.pool_o = Pool(
+                    name=f"{name}.pool_o",
+                    p=ks.p,
+                    d=self.cs.c,
+                    agg=NumDict.sum)
+
+                self.pool_i = Pool(
+                    name=f"{name}.pool_i",
+                    p=ks.p,
+                    d=self.cs.c,
+                    agg=NumDict.sum)
+
+                self.asn = Layer(
+                    f"{name}.asn",
+                    i=self.cs.c,
+                    o=self.cs.c)
+
+                self.out = Choice(
+                    f"{name}.out",
+                    p=ks.p,
+                    s=ks.d,
+                    d=self.cs.c,
+                    sd=sd,
+                    f=f)
 
         self.ipt >> self.pool_i
         self.pool_i >> self.asn
@@ -104,7 +114,6 @@ class Model(Agent):
         self.td >> self.bu
         (self.bu, self.asn) >> self.pool_o
         self.pool_o >> self.out
-
 
     def resolve(self, event: Event) -> None:
 
@@ -147,10 +156,17 @@ class Binary(Atoms):
     n: Atom
     y: Atom
 
+
 class ModelData(DataFamily):
     red: Binary
     green: Binary
     blue: Binary
+    text_red: Binary
+    text_green: Binary
+    text_blue: Binary
+    color_red: Binary
+    color_green: Binary
+    color_blue: Binary
 
 
 def init_chunks(root: ModelKeyspace[ModelData]) -> list[Chunk]:
@@ -165,49 +181,59 @@ def init_chunks(root: ModelKeyspace[ModelData]) -> list[Chunk]:
     return [
 
         red := "red" ^
-                Chunk({
-                       })
-               + b.main.wm ** d.red.y,  # Replace this with features
+               + b.main.wm ** (d.color_red.y, d.text_red.y, d.text_green.y, d.text_blue.y),
+
         green := "green" ^
-                   Chunk({
-                          })
-                 + b.main.wm ** d.green.y,  # Replace this with features
+                 + b.main.wm ** (d.color_green.y, d.text_red.y, d.text_green.y, d.text_blue.y),
+
         blue := "blue" ^
-                 Chunk({
-                        })
-                + b.main.wm ** d.red.y,
-        "red" ^
+                + b.main.wm ** (d.color_blue.y, d.text_red.y, d.text_green.y, d.text_blue.y),
+
+        "color_red" ^
         + red
-        + b.main.wm ** d.red.y
-        - b.main.wm ** (d.blue.y, d.green.y),
+        + b.main.wm ** d.color_red.y
+        - b.main.wm ** (d.color_blue.y, d.color_green.y),
 
-        "green" ^
+        "color_green" ^
         + green
-        + b.main.wm ** d.green.y
-        - b.main.wm ** (d.red.y, d.blue.y),
+        + b.main.wm ** d.color_green.y
+        - b.main.wm ** (d.color_blue.y, d.color_red.y),
 
-        "blue" ^
+        "color_blue" ^
         + blue
-        - b.main.wm ** (d.red.y, d.green.y),
+        + b.main.wm ** d.color_blue.y
+        - b.main.wm ** (d.color_green.y, d.color_red.y),
+
+        "text_red" ^
+        + b.main.wm ** d.text_red.y,
+
+        "text_green" ^
+        + b.main.wm ** d.text_green.y,
+
+        "text_blue" ^
+        + b.main.wm ** d.text_blue.y
     ]
 
 
 if __name__ == "__main__":
     root = ModelKeyspace(ModelData)
-    model = Model("model", root, sd=5e-1)
+    model = Model("model", root, sd=3e-1)
     chunks = init_chunks(root)
     model.system.schedule(model.cs.encode(*chunks))
     model.system.run_all()
 
-    (red, green, blue) = chunks
+    (red, green, blue, color_red, color_green, color_blue, text_green, text_blue, text_red) = chunks
     with model.asn.weights[0].mutable() as d:
-        d[~red * ~red] = 1
-        d[~green * ~green] = 1
-        d[~blue * ~blue] = 1
+        d[~color_red * ~red] = 1
+        d[~color_green * ~green] = 1
+        d[~color_blue * ~blue] = 1
+        d[~text_red * ~red] = 1
+        d[~text_green * ~green] = 1
+        d[~text_blue * ~blue] = 1
 
     with model.asn.bias[0].mutable() as d:
         d[~model.cs.c.nil] = 1
-    stimuli = [red, green, blue]
+    stimuli = [color_red, text_red, color_blue]
 
     cycle_1i = {model.ipt.name: 1.0, model.pool_o.name: 0.0}
     cycle_1o = {model.bu.name: 1.0, model.asn.name: 0.0}
@@ -239,3 +265,4 @@ if __name__ == "__main__":
             elif event.source == model.out.select:
                 print(event.describe())
                 print("Response: ", model.out.poll()[~model.cs.c])
+                print()
