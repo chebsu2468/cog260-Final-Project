@@ -22,8 +22,8 @@ INTERFACE CONTRACT:
         - COLORS, RESPONSES constants
 """
 
-from pyClarion import Atom, Atoms, Agent, Input, ChunkStore, BottomUp
-from pyClarion.knowledge import Buses, Bus, BusFamily, DataFamily, Root, DVPairs
+from pyClarion.pyClarion import Atom, Atoms, Agent, Input, ChunkStore, BottomUp
+from pyClarion.pyClarion.knowledge import Buses, Bus, BusFamily, DataFamily, Root, DVPairs
 
 
 # ============================================================
@@ -244,7 +244,7 @@ def get_bottom_activations(ink_color: str, word_content: str,
 # QUICK TEST
 # ============================================================
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     print("=== Bottom Level Activation Tests (pyClarion) ===\n")
 
     bottom = StroopBottomLevel(word_weight=1.0, ink_weight=0.6)
