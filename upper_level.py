@@ -1,24 +1,21 @@
 from datetime import timedelta
 from pyClarion.pyClarion import (
-    Agent,  # Base class for defining pyClarion agents
-    ChunkStore,  # A process that maintains chunk data
+    Agent,
+    ChunkStore,
     Input,
     Pool,
     BottomUp,
-    # A process that combines activations from different sources, with
-    #    optional source weighting via parameters.
-    TopDown,  # A process that computes top-down activations
+    TopDown,
     Choice,
     Chunk
-    # A process that implements a Thurstonian choice model (Case V)
 )
 
 from pyClarion.pyClarion.components.layers import Layer
 
 from pyClarion.pyClarion import (
-    NumDict,  # Numerical dictionary class. This is how pyClarion does math.
-    Event,  # Represents simulation events.
-    Priority  # Events have priority values to help specify what happens when
+    NumDict,
+    Event,
+    Priority
 )
 from pyClarion.pyClarion.knowledge import (Root, ChunkFamily, DataFamily,
                                            AtomFamily, BusFamily, Atoms, Atom, Buses, Bus,
@@ -227,9 +224,9 @@ if __name__ == "__main__":
         d[~color_red * ~red] = 1
         d[~color_green * ~green] = 1
         d[~color_blue * ~blue] = 1
-        d[~text_red * ~red] = 1
-        d[~text_green * ~green] = 1
-        d[~text_blue * ~blue] = 1
+        d[~text_red * ~red] = 1.5
+        d[~text_green * ~green] = 1.5
+        d[~text_blue * ~blue] = 1.5
 
     with model.asn.bias[0].mutable() as d:
         d[~model.cs.c.nil] = 1
