@@ -253,9 +253,9 @@ if __name__ == "__main__":
     result = bottom.get_activations("blue", "blue")
     print(f"Congruent (blue/blue):    {result}")
 
-    # Incongruent: word "RED" in blue ink
-    result = bottom.get_activations("blue", "red")
-    print(f"Incongruent (blue/red):   {result}")
+    # Incongruent: word "RED" in green ink
+    result = bottom.get_activations("green", "red")
+    print(f"Incongruent (green/red):   {result}")
 
     # Neutral: no color word, blue ink
     result = bottom.get_activations("blue", "neutral")
