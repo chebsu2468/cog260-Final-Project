@@ -74,8 +74,7 @@ class StroopRoot(Root):
 
 # ============================================================
 # AGENT DEFINITION
-# Assembles pyClarion components: Input → BottomUp → ChunkStore
-# Same pattern as the WCST Tutorial 0, adapted for Stroop.
+# Assembles pyClarion components: Input -> BottomUp -> ChunkStore
 # ============================================================
 
 class StroopBottomAgent[R: Root, D: DVPairs](Agent):
