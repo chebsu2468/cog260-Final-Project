@@ -4,9 +4,9 @@ from itertools import product
 from weakref import WeakSet
 from math import prod
 
-from pyClarion.pyClarion.numdicts.keyspaces import KSChild
+from .keyspaces import KSChild
 
-from.keys import Key, KeyForm
+from .keys import Key, KeyForm
 from .keyspaces import KSPath, KSRoot, KSParent, KSObserver, KeyGroup, ks_root
 
 
