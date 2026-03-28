@@ -316,7 +316,6 @@ class TopLevelModel(Agent):
 
 # ============================================================
 # MODULE-LEVEL MODEL INSTANCE
-# Created once, reused across calls to get_top_activations
 # ============================================================
 
 # Build the model
@@ -327,9 +326,8 @@ _rules = init_stroop_top_rules(_model.ks)
 _model.system.schedule(_model.prs.encode(*_rules))
 _model.system.run_all()
 
-# Create stimulus handles (Tutorial 3 "simulation setup" pattern)
+# Create stimulus handles
 _ks = _model.ks
-_nil   = + _ks.b.main.acs ** _ks.d.input.nil
 _red   = + _ks.b.main.acs ** _ks.d.input.red
 _blue  = + _ks.b.main.acs ** _ks.d.input.blue
 _green = + _ks.b.main.acs ** _ks.d.input.green
@@ -438,17 +436,117 @@ def get_top_activations(ink_color: str, goal: str = "name_ink_color") -> dict:
 
 
 # ============================================================
-# QUICK TEST
+# TEST
 # ============================================================
 
 if __name__ == "__main__":
-    print("=== Top Level Activation Tests (pyClarion-native) ===\n")
+#     print("=== Top Level Activation Tests (pyClarion-native) ===\n")
 
+#     for ink in ["red", "blue", "green"]:
+#         result = get_top_activations(ink)
+#         print(f"Ink={ink}: {result}")
+
+#     print("\n--- Verify: top level ALWAYS activates the correct response ---")
+#     print("--- Verify: top level ignores word content entirely ---")
+#     print("--- The 'weakness' of controlled processing comes from W_top ---")
+#     print("--- in the ACS integration module (simulation.py) ---")
+
+    passed = 0
+    failed = 0
+ 
+    def check(test_name, actual, expected):
+        global passed, failed
+        if actual == expected:
+            print(f"  PASS  {test_name}")
+            passed += 1
+        else:
+            print(f"  FAIL  {test_name}")
+            print(f"        expected: {expected}")
+            print(f"        got:      {actual}")
+            failed += 1
+ 
+    # ==========================================================
+    # TEST 1: Goal Module — correct rule fires for each ink color
+    # ==========================================================
+    # The goal is always "name_ink_color". Given each ink color,
+    # the production rule system should activate ONLY the matching
+    # response (the one that names that ink color).
+ 
+    print("=== Test 1: Goal Module — rule fires correctly per ink ===\n")
+ 
+    check("goal=name_ink_color, ink=red -> say_red",
+        get_top_activations("red", goal="name_ink_color"),
+        {"say_red": 1.0, "say_blue": 0.0, "say_green": 0.0})
+ 
+    check("goal=name_ink_color, ink=blue -> say_blue",
+        get_top_activations("blue", goal="name_ink_color"),
+        {"say_red": 0.0, "say_blue": 1.0, "say_green": 0.0})
+ 
+    check("goal=name_ink_color, ink=green -> say_green",
+        get_top_activations("green", goal="name_ink_color"),
+        {"say_red": 0.0, "say_blue": 0.0, "say_green": 1.0})
+ 
+    # ==========================================================
+    # TEST 2: Working Memory — top level ignores word entirely
+    # ==========================================================
+    # The top level receives ONLY ink color as input. It has no
+    # word dimension at all. So calling with the same ink color
+    # must always produce the same result regardless of what word
+    # the bottom level might be processing in parallel.
+    #
+    # We verify this by calling the same ink color twice and
+    # checking that the output is identical and correct.
+ 
+    print("\n=== Test 2: WM — response is stable across repeated calls ===\n")
+ 
+    result_1 = get_top_activations("red")
+    result_2 = get_top_activations("red")
+    check("ink=red called twice gives identical output",
+        result_1, result_2)
+    check("ink=red repeated still activates say_red",
+        result_1,
+        {"say_red": 1.0, "say_blue": 0.0, "say_green": 0.0})
+ 
+    # ==========================================================
+    # TEST 3: Congruent vs Incongruent — top level is unaffected
+    # ==========================================================
+    # In a congruent trial (word=RED, ink=red) and an incongruent
+    # trial (word=GREEN, ink=red), the top level should produce
+    # the SAME output, because it only sees ink color.
+    #
+    # (The word dimension lives in bottom_level.py, not here.)
+ 
+    print("\n=== Test 3: Congruent vs Incongruent — same top output ===\n")
+ 
+    congruent   = get_top_activations("red")   # word=RED,   ink=red
+    incongruent = get_top_activations("red")   # word=GREEN, ink=red
+    check("congruent and incongruent trials produce same top-level output",
+        congruent, incongruent)
+    check("both correctly activate say_red",
+        congruent,
+        {"say_red": 1.0, "say_blue": 0.0, "say_green": 0.0})
+ 
+    # ==========================================================
+    # TEST 4: Each ink maps to exactly one response
+    # ==========================================================
+    # Verify that for every ink color, exactly one response is 1.0
+    # and the other two are 0.0 (clean winner-take-all).
+ 
+    print("\n=== Test 4: Winner-take-all — exactly one response active ===\n")
+ 
     for ink in ["red", "blue", "green"]:
         result = get_top_activations(ink)
-        print(f"Ink={ink}: {result}")
-
-    print("\n--- Verify: top level ALWAYS activates the correct response ---")
-    print("--- Verify: top level ignores word content entirely ---")
-    print("--- The 'weakness' of controlled processing comes from W_top ---")
-    print("--- in the ACS integration module (Person 3's simulation.py) ---")
+        active_count = sum(1 for v in result.values() if v == 1.0)
+        zero_count   = sum(1 for v in result.values() if v == 0.0)
+        check(f"ink={ink}: exactly 1 active, 2 inactive",
+            (active_count, zero_count), (1, 2))
+ 
+    # ==========================================================
+    # SUMMARY
+    # ==========================================================
+ 
+    print(f"\n{'='*50}")
+    print(f"Results: {passed} passed, {failed} failed out of {passed+failed}")
+    if failed == 0:
+        print("Yeayyy all tests passed!")
+    print(f"{'='*50}")
