@@ -44,7 +44,7 @@ from datetime import timedelta
 
 # ============================================================
 # KEYSPACE DEFINITIONS
-# Following Tutorial 3's pattern: Buses → Layout → Data → Root
+# Buses -> Layout -> Data -> Root
 # ============================================================
 
 class MainBuses(Buses):
@@ -99,10 +99,6 @@ class StroopTopData(DataFamily):
     response: ResponseState
 
 
-# ============================================================
-# KEYSPACE
-# ============================================================
-
 class TopKeyspace(Root):
     """
     Keyspace hierarchy: Root -> Families -> Sorts -> Atoms
@@ -126,7 +122,6 @@ class TopKeyspace(Root):
 
 # ============================================================
 # PRODUCTION RULES
-# Following Tutorial 3's rule syntax with ^ naming and + chunks
 # ============================================================
 
 def init_stroop_top_rules(ks: TopKeyspace) -> list[Rule]:
@@ -139,14 +134,14 @@ def init_stroop_top_rules(ks: TopKeyspace) -> list[Rule]:
         These are the explicit, verbalizable rules the participant follows:
         "If my goal is to name the ink color and the ink is red, say red."
 
-    Uses pyClarion's rule syntax from Tutorial 3:
+    Uses pyClarion's rule syntax:
         - '+' adds a dimension-value pair to a chunk
         - 'b.main.acs ** d.X.Y' pairs bus location with data value
         - '>>' separates antecedent (LHS) from consequent (RHS)
         - '^' assigns a human-readable name to the rule
         - Disjunctive values use tuple syntax: (d.input.red, d.input.blue)
 
-    The inertial/default rule (Tutorial 3 pattern) ensures the goal persists
+    The inertial/default rule ensures the goal persists
     across processing cycles unless explicitly changed.
     """
     b = ks.b
@@ -210,7 +205,7 @@ class TopLevelModel(Agent):
     """
     pyClarion Agent implementing the top-level production rule system.
 
-    Architecture (following Tutorial 3):
+    Architecture:
         input → pool_in → lhs_bu → lhs_layer → rule_selector
                                                      ↓
         state ← pool_out ← rhs_td ← rhs_layer ←──────┘
@@ -280,7 +275,6 @@ class TopLevelModel(Agent):
             self.pool_out.params[0][~self.pool_out.p[self.inhib.name]] = 0.5
 
         # Name generators for auto-created chunks and rules
-        # (Required bookkeeping from Tutorial 3)
         def namer():
             from itertools import count
             counter = count()
@@ -292,7 +286,7 @@ class TopLevelModel(Agent):
         self.prs.r._namer_ = namer()
 
     def resolve(self, event: Event) -> None:
-        """Schedule forward propagation (Tutorial 3 pattern)."""
+        """Schedule forward propagation."""
         if event.source == self.input.send:
             self.system.schedule(self.pool_in.forward())
         if event.source == self.lhs_layer.forward:
