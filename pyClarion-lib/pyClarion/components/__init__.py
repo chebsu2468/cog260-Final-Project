@@ -2,7 +2,7 @@ from .base import Priority
 from .io import  Input, Choice
 from .sim import Environment, Agent
 from .chunks import ChunkStore, BottomUp, TopDown
-from .layers import Pool
+from .layers import Pool, Layer
 from .learning import TDLearning
 from .optimizers import SGD, Adam
     # #PoolBL, PoolTL, ChunkAssocs, 
