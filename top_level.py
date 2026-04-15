@@ -428,6 +428,10 @@ def get_top_activations(ink_color: str, goal: str = "name_ink_color") -> dict:
 
     return activations
 
+def get_clock_seconds() -> int:
+    """Current pyClarion simulation clock time of the top-level model."""
+    return _model.system.clock.time.seconds
+
 
 # ============================================================
 # TEST

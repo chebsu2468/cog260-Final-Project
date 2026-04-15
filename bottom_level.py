@@ -238,6 +238,12 @@ def get_bottom_activations(ink_color: str, word_content: str,
 
     return _default_bottom_level.get_activations(ink_color, word_content)
 
+def get_clock_seconds() -> int:
+    """Current pyClarion simulation clock time of the bottom-level agent."""
+    if _default_bottom_level is None:
+        return 0
+    return _default_bottom_level.agent.system.clock.time.seconds
+
 
 # ============================================================
 # QUICK TEST
