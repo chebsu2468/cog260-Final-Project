@@ -39,8 +39,9 @@ INTERFACE CONTRACT:
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from bottom_level import get_bottom_activations, COLORS, WORDS, RESPONSES
-from top_level import get_top_activations
+from bottom_level import (get_bottom_activations, get_clock_seconds as get_bottom_clock,
+                          COLORS, RESPONSES)
+from top_level import get_top_activations, get_clock_seconds as get_top_clock
 
 
 # ============================================================
@@ -197,27 +198,30 @@ def run_single_trial(ink_color, word_content, correct_response, trial_type,
     Returns:
         dict with all trial data
     """
-    # Step 1: Bottom level (implicit, automatic)
+    # Step 1: Bottom level — record clock before/after to get cycles spent
+    t_bot_before = get_bottom_clock()
     bottom_acts = get_bottom_activations(ink_color, word_content, word_weight, ink_weight)
+    bottom_cycles = get_bottom_clock() - t_bot_before
 
-    # Step 2: Top level (explicit, controlled)
+    # Step 2: Top level — same
+    t_top_before = get_top_clock()
     top_acts = get_top_activations(ink_color)
+    top_cycles = get_top_clock() - t_top_before
 
-    # Step 3: ACS integration
+    # Total simulated cognitive time spent in pyClarion this trial
+    rt_cycles = bottom_cycles + top_cycles
+
+    # Step 3: ACS integration (numpy)
     combined_acts = integrate_activations(bottom_acts, top_acts, w_bottom, w_top)
 
-    # Step 4: Boltzmann selection
+    # Step 4: Boltzmann selection (numpy)
     selected_response = boltzmann_select(combined_acts, temperature)
 
     # Step 5: Measures
     is_correct = (selected_response == correct_response)
 
-    # Response conflict (RT proxy) from the paper:
-    #   "the inverse of the difference between the two highest response activations"
-    # Small gap → high conflict → slow RT; large gap → low conflict → fast RT
     sorted_acts = sorted(combined_acts.values(), reverse=True)
     activation_gap = sorted_acts[0] - sorted_acts[1]
-    # Avoid division by zero; if gap is 0, activations are tied = maximum conflict
     response_conflict = 1.0 / activation_gap if activation_gap > 1e-9 else 1e6
 
     return {
@@ -232,6 +236,9 @@ def run_single_trial(ink_color, word_content, correct_response, trial_type,
         "combined_activations": combined_acts,
         "activation_gap": activation_gap,
         "response_conflict": response_conflict,
+        "bottom_cycles": bottom_cycles,
+        "top_cycles": top_cycles,
+        "rt_cycles": rt_cycles,
     }
 
 
@@ -340,10 +347,14 @@ def summarize_results(results):
         accuracy = np.mean([r["is_correct"] for r in trials])
         mean_conflict = np.mean([r["response_conflict"] for r in trials])
         mean_gap = np.mean([r["activation_gap"] for r in trials])
+        mean_rt = np.mean([r["rt_cycles"] for r in trials])
+        std_rt = np.std([r["rt_cycles"] for r in trials], ddof=1)
         summary[trial_type] = {
             "accuracy": accuracy,
             "mean_conflict": mean_conflict,
             "mean_gap": mean_gap,
+            "mean_rt_cycles": mean_rt,
+            "std_rt_cycles": std_rt,
             "n_trials": len(trials),
         }
 
@@ -361,6 +372,13 @@ def summarize_results(results):
     )
     summary["conflict_facilitation"] = (
         summary["neutral"]["mean_conflict"] - summary["congruent"]["mean_conflict"]
+    )
+
+    summary["rt_interference"] = (
+        summary["incongruent"]["mean_rt_cycles"] - summary["neutral"]["mean_rt_cycles"]
+    )
+    summary["rt_facilitation"] = (
+        summary["neutral"]["mean_rt_cycles"] - summary["congruent"]["mean_rt_cycles"]
     )
 
     return summary
